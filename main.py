@@ -5,10 +5,14 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-KANBAN_DB = Path(os.environ.get("HERMES_KANBAN_DB", Path.home() / ".hermes" / "kanban.db"))
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
+KANBAN_DIR = HERMES_HOME / "kanban" / "boards"
+DEFAULT_DB = HERMES_HOME / "kanban.db"
+PROFILES_DIR = HERMES_HOME / "profiles"
+
 COLUMNS = ["todo", "ready", "in_progress", "blocked", "done", "archived"]
 STATUS_LABELS = {
     "todo": "Todo", "ready": "Ready", "in_progress": "In Progress",
@@ -20,8 +24,39 @@ templates.env.globals["STATUS_LABELS"] = STATUS_LABELS
 templates.env.globals["COLUMNS"] = COLUMNS
 
 
-def get_db() -> sqlite3.Connection:
-    db = sqlite3.connect(str(KANBAN_DB))
+def get_db_path(board: str) -> Path:
+    """Resolve the kanban.db path for a given board slug."""
+    if board == "default":
+        return DEFAULT_DB
+    return KANBAN_DIR / board / "kanban.db"
+
+
+def list_boards() -> list[dict]:
+    """List all available boards with their DB paths."""
+    boards = [{"slug": "default", "name": "Default", "db": str(DEFAULT_DB)}]
+    if KANBAN_DIR.is_dir():
+        for d in sorted(KANBAN_DIR.iterdir()):
+            if d.is_dir() and (d / "kanban.db").exists():
+                slug = d.name
+                # Try to get display name from hermes CLI, fall back to slug
+                boards.append({"slug": slug, "name": slug.replace("-", " ").title(), "db": str(d / "kanban.db")})
+    return boards
+
+
+def get_assignees() -> list[str]:
+    """Get available assignees: Hermes profiles + existing task assignees."""
+    assignees = []
+    if PROFILES_DIR.is_dir():
+        assignees = sorted(
+            d.name for d in PROFILES_DIR.iterdir()
+            if d.is_dir() and (d / "config.yaml").exists()
+        )
+    return assignees
+
+
+def get_db(board: str = "default") -> sqlite3.Connection:
+    db_path = str(get_db_path(board))
+    db = sqlite3.connect(db_path)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("PRAGMA busy_timeout=5000")
@@ -46,64 +81,75 @@ def task_row(task) -> dict:
     }
 
 
+def get_board_context(db, board: str):
+    """Fetch tasks and assignees for a board."""
+    tasks_by_status = {}
+    for col in COLUMNS:
+        rows = db.execute(
+            "SELECT * FROM tasks WHERE status = ? ORDER BY priority DESC, created_at DESC",
+            (col,),
+        ).fetchall()
+        tasks_by_status[col] = [task_row(r) for r in rows]
+    # Also include assignees from existing tasks
+    profile_assignees = get_assignees()
+    db_assignees = [
+        r[0] for r in db.execute(
+            "SELECT DISTINCT assignee FROM tasks WHERE assignee IS NOT NULL AND assignee != ''"
+        ).fetchall()
+    ]
+    all_assignees = sorted(set(profile_assignees + db_assignees))
+    return tasks_by_status, all_assignees
+
+
 app = FastAPI(title="Hermes Kanban Dashboard")
 
+# ── Redirect root to default board ─────────────────────────
 
-# ── Page routes ──────────────────────────────────────────────
+@app.get("/", response_class=RedirectResponse)
+async def root():
+    return RedirectResponse("/board/default", status_code=302)
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    db = get_db()
+
+# ── Board routes ───────────────────────────────────────────
+
+@app.get("/board/{board}", response_class=HTMLResponse)
+async def board_view(request: Request, board: str, fragment: bool = False):
+    db_path = get_db_path(board)
+    if not db_path.exists():
+        return HTMLResponse(f"<h2>Board '{board}' not found</h2>", status_code=404)
+    db = get_db(board)
     try:
-        tasks_by_status = {}
-        for col in COLUMNS:
-            rows = db.execute(
-                "SELECT * FROM tasks WHERE status = ? ORDER BY priority DESC, created_at DESC",
-                (col,),
-            ).fetchall()
-            tasks_by_status[col] = [task_row(r) for r in rows]
-        assignees = [
-            r[0] for r in db.execute(
-                "SELECT DISTINCT assignee FROM tasks WHERE assignee IS NOT NULL AND assignee != ''"
-            ).fetchall()
-        ]
+        tasks_by_status, assignees = get_board_context(db, board)
     finally:
         db.close()
-    return templates.TemplateResponse(
-        request=request, name="index.html",
-        context={"tasks_by_status": tasks_by_status, "assignees": assignees},
-    )
+    boards = list_boards()
+    if fragment:
+        return templates.TemplateResponse("_board.html", {
+            "request": request,
+            "board": board,
+            "boards": boards,
+            "tasks_by_status": tasks_by_status,
+            "assignees": assignees,
+        })
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "board": board,
+        "boards": boards,
+        "tasks_by_status": tasks_by_status,
+        "assignees": assignees,
+    })
 
 
-@app.get("/api/board", response_class=HTMLResponse)
-async def board_fragment(request: Request):
-    db = get_db()
-    try:
-        tasks_by_status = {}
-        for col in COLUMNS:
-            rows = db.execute(
-                "SELECT * FROM tasks WHERE status = ? ORDER BY priority DESC, created_at DESC",
-                (col,),
-            ).fetchall()
-            tasks_by_status[col] = [task_row(r) for r in rows]
-        assignees = [
-            r[0] for r in db.execute(
-                "SELECT DISTINCT assignee FROM tasks WHERE assignee IS NOT NULL AND assignee != ''"
-            ).fetchall()
-        ]
-    finally:
-        db.close()
-    return templates.TemplateResponse(
-        request=request, name="index.html",
-        context={"tasks_by_status": tasks_by_status, "assignees": assignees},
-    )
+# ── REST API ───────────────────────────────────────────────
 
+@app.get("/api/boards")
+async def api_list_boards():
+    return list_boards()
 
-# ── REST API ─────────────────────────────────────────────────
 
 @app.get("/api/tasks")
-async def list_tasks(status: str | None = None):
-    db = get_db()
+async def list_tasks(status: str | None = None, board: str = "default"):
+    db = get_db(board)
     try:
         if status:
             rows = db.execute(
@@ -120,8 +166,8 @@ async def list_tasks(status: str | None = None):
 
 
 @app.get("/api/tasks/{task_id}")
-async def get_task(task_id: str):
-    db = get_db()
+async def get_task(task_id: str, board: str = "default"):
+    db = get_db(board)
     try:
         task = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         if not task:
@@ -160,10 +206,11 @@ async def create_task(
     body: str = Form(""),
     assignee: str = Form(""),
     priority: int = Form(0),
+    board: str = Form("default"),
 ):
     task_id = f"t_{uuid.uuid4().hex[:12]}"
     now = int(time.time())
-    db = get_db()
+    db = get_db(board)
     try:
         db.execute(
             """INSERT INTO tasks (id, title, body, assignee, status, priority, created_at)
@@ -173,14 +220,14 @@ async def create_task(
         db.commit()
     finally:
         db.close()
-    return await _task_card_html(task_id)
+    return await _task_card_html(task_id, board)
 
 
 @app.patch("/api/tasks/{task_id}/status")
-async def update_status(task_id: str, status: str = Form(...)):
+async def update_status(task_id: str, status: str = Form(...), board: str = Form("default")):
     if status not in COLUMNS:
         return JSONResponse({"error": f"invalid status: {status}"}, status_code=400)
-    db = get_db()
+    db = get_db(board)
     try:
         now = int(time.time())
         db.execute("UPDATE tasks SET status = ? WHERE id = ?", (status, task_id))
@@ -191,39 +238,12 @@ async def update_status(task_id: str, status: str = Form(...)):
         db.commit()
     finally:
         db.close()
-    return await _task_card_html(task_id)
-
-
-@app.patch("/api/tasks/{task_id}")
-async def update_task(
-    task_id: str,
-    title: str = Form(None),
-    body: str = Form(None),
-    assignee: str = Form(None),
-    priority: int = Form(None),
-):
-    db = get_db()
-    try:
-        existing = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
-        if not existing:
-            return JSONResponse({"error": "not found"}, status_code=404)
-        updates = {}
-        if title is not None: updates["title"] = title
-        if body is not None: updates["body"] = body
-        if assignee is not None: updates["assignee"] = assignee
-        if priority is not None: updates["priority"] = priority
-        if updates:
-            sets = ", ".join(f"{k} = ?" for k in updates)
-            db.execute(f"UPDATE tasks SET {sets} WHERE id = ?", (*updates.values(), task_id))
-            db.commit()
-    finally:
-        db.close()
-    return await _task_card_html(task_id)
+    return await _task_card_html(task_id, board)
 
 
 @app.delete("/api/tasks/{task_id}")
-async def delete_task(task_id: str):
-    db = get_db()
+async def delete_task(task_id: str, board: str = "default"):
+    db = get_db(board)
     try:
         db.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
         db.execute("DELETE FROM task_links WHERE parent_id = ? OR child_id = ?", (task_id, task_id))
@@ -235,9 +255,9 @@ async def delete_task(task_id: str):
 
 
 @app.post("/api/tasks/{task_id}/comments")
-async def add_comment(task_id: str, body: str = Form(...), author: str = Form("web")):
+async def add_comment(task_id: str, body: str = Form(...), author: str = Form("web"), board: str = Form("default")):
     now = int(time.time())
-    db = get_db()
+    db = get_db(board)
     try:
         db.execute(
             "INSERT INTO task_comments (task_id, author, body, created_at) VALUES (?, ?, ?, ?)",
@@ -249,27 +269,21 @@ async def add_comment(task_id: str, body: str = Form(...), author: str = Form("w
     return {"ok": True}
 
 
-# ── HTML fragments ───────────────────────────────────────────
+# ── HTML fragments ─────────────────────────────────────────
 
-@app.get("/api/tasks/{task_id}/html", response_class=HTMLResponse)
-async def task_html(task_id: str, request: Request):
-    return await _task_card_html(task_id)
-
-
-async def _task_card_html(task_id: str):
-    db = get_db()
+async def _task_card_html(task_id: str, board: str):
+    db = get_db(board)
     try:
         task = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
         if not task:
             return HTMLResponse("", status_code=404)
         t = task_row(task)
-        # Build a minimal request-like scope for the template
-        from fastapi import Request as _Request
         scope = {"type": "http", "method": "GET", "path": "/", "headers": []}
+        from fastapi import Request as _Request
         req = _Request(scope)
         return templates.TemplateResponse(
             request=req, name="_task_card.html",
-            context={"task": t},
+            context={"task": t, "board": board},
         )
     finally:
         db.close()
