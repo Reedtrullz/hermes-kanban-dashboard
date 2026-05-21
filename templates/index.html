@@ -87,6 +87,10 @@
 <body>
 <header>
   <h1>Kanban</h1>
+  <nav style="display:flex;gap:4px">
+    <a href="/board/{{ board }}" style="color:var(--text);text-decoration:none;font-size:12px;padding:4px 10px;border-radius:4px;background:var(--border)">Board</a>
+    <a href="/proposals" style="color:var(--muted);text-decoration:none;font-size:12px;padding:4px 10px;border-radius:4px">Proposals</a>
+  </nav>
   <select class="board-selector" onchange="location.href='/board/'+this.value">
     {% for b in boards %}
     <option value="{{ b.slug }}" {% if b.slug == board %}selected{% endif %}>{{ b.name }}</option>
