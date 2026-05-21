@@ -64,12 +64,16 @@ def get_db(board: str = "default") -> sqlite3.Connection:
 
 
 def task_row(task) -> dict:
+    status = task["status"]
+    # Hermes uses 'running' for actively executing tasks; normalise to 'in_progress' for display
+    if status == "running":
+        status = "in_progress"
     return {
         "id": task["id"],
         "title": task["title"],
         "body": task["body"] or "",
         "assignee": task["assignee"] or "",
-        "status": task["status"],
+        "status": status,
         "priority": task["priority"] or 0,
         "created_at": task["created_at"],
         "started_at": task["started_at"],
@@ -85,10 +89,16 @@ def get_board_context(db, board: str):
     """Fetch tasks and assignees for a board."""
     tasks_by_status = {}
     for col in COLUMNS:
-        rows = db.execute(
-            "SELECT * FROM tasks WHERE status = ? ORDER BY priority DESC, created_at DESC",
-            (col,),
-        ).fetchall()
+        if col == "in_progress":
+            # Hermes uses 'running' internally; query both
+            rows = db.execute(
+                "SELECT * FROM tasks WHERE status IN ('in_progress', 'running') ORDER BY priority DESC, created_at DESC",
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT * FROM tasks WHERE status = ? ORDER BY priority DESC, created_at DESC",
+                (col,),
+            ).fetchall()
         tasks_by_status[col] = [task_row(r) for r in rows]
     # Also include assignees from existing tasks
     profile_assignees = get_assignees()
@@ -146,10 +156,15 @@ async def list_tasks(status: str | None = None, board: str = "default"):
     db = get_db(board)
     try:
         if status:
-            rows = db.execute(
-                "SELECT * FROM tasks WHERE status = ? ORDER BY priority DESC, created_at DESC",
-                (status,),
-            ).fetchall()
+            if status == "in_progress":
+                rows = db.execute(
+                    "SELECT * FROM tasks WHERE status IN ('in_progress', 'running') ORDER BY priority DESC, created_at DESC",
+                ).fetchall()
+            else:
+                rows = db.execute(
+                    "SELECT * FROM tasks WHERE status = ? ORDER BY priority DESC, created_at DESC",
+                    (status,),
+                ).fetchall()
         else:
             rows = db.execute(
                 "SELECT * FROM tasks ORDER BY priority DESC, created_at DESC"
