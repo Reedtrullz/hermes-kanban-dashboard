@@ -381,3 +381,97 @@ def test_approval_decision_and_existing_status_trigger(tmp_path, monkeypatch):
         approval = db.execute("SELECT status, decision_reason FROM approval_requests WHERE id=?", (approval_id,)).fetchone()
         assert approval["status"] == "approved"
         assert approval["decision_reason"] == "Looks good"
+
+
+def test_executor_type_column_exists_and_defaults_to_hermes(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    with main.db_connect() as db:
+        cols = {r["name"] for r in db.execute("PRAGMA table_info(agents)").fetchall()}
+        assert "executor_type" in cols
+        agent = db.execute("SELECT executor_type FROM agents WHERE id='agent_builder'").fetchone()
+        assert agent["executor_type"] == "hermes"
+
+
+def test_create_codex_agent_from_template_has_correct_executor(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    resp = client.post("/api/proposals/agents/from-template",
+        data={"template_key": "codex_coder"}, follow_redirects=False)
+    assert resp.status_code == 303
+    agent_id = resp.headers["location"].split("agent_id=", 1)[1]
+    with main.db_connect() as db:
+        agent = db.execute("SELECT executor_type, provider, model_name FROM agents WHERE id=?", (agent_id,)).fetchone()
+        assert agent["executor_type"] == "codex"
+        assert agent["provider"] == "openai"
+
+
+def test_executor_api_endpoint_returns_null_for_hermes_agent(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    # Create a proposal assigned to agent_builder (hermes executor)
+    pid = client.post("/api/proposals", data={
+        "title": "Executor test", "assigned_agent_id": "agent_builder"
+    }).json()["id"]
+    resp = client.get(f"/api/proposals/{pid}/executor")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["proposal_id"] == pid
+    assert data["executor"] is None  # hermes = no executor info
+
+
+def test_trigger_executor_file_written_for_codex_agent(tmp_path, monkeypatch):
+    import json
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    # Create a codex agent
+    client.post("/api/agents", data={
+        "name": "Test Codex", "role_title": "Coder",
+        "provider": "openai", "model_name": "gpt-5",
+        "executor_type": "codex", "tools_allowed": "comment",
+        "monthly_budget_usd": "50",
+    })
+    with main.db_connect() as db:
+        agent_id = db.execute("SELECT id FROM agents WHERE name='Test Codex'").fetchone()["id"]
+    # Create proposal assigned to codex agent
+    pid = client.post("/api/proposals", data={
+        "title": "Codex task", "assigned_agent_id": agent_id
+    }).json()["id"]
+    executor_file = tmp_path / "proposals_trigger_executor"
+    assert executor_file.exists(), "executor file should exist for codex agent"
+    data = json.loads(executor_file.read_text())
+    assert data["executor_type"] == "codex"
+    assert data["proposal_id"] == pid
+
+    # Hermes agent should NOT write executor file
+    executor_file.unlink()
+    client.post("/api/proposals", data={
+        "title": "Hermes task", "assigned_agent_id": "agent_builder"
+    })
+    assert not executor_file.exists(), "executor file should NOT exist for hermes agent"
+
+
+def test_dangerous_executor_triggers_approval(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    # Create codex agent
+    client.post("/api/agents", data={
+        "name": "YOLO Coder", "role_title": "Coder",
+        "provider": "openai", "model_name": "gpt-5",
+        "executor_type": "codex", "tools_allowed": "comment",
+        "monthly_budget_usd": "50",
+    })
+    with main.db_connect() as db:
+        agent_id = db.execute("SELECT id FROM agents WHERE name='YOLO Coder'").fetchone()["id"]
+    # Create proposal assigned to codex agent
+    pid = client.post("/api/proposals", data={
+        "title": "Risky task", "assigned_agent_id": agent_id
+    }).json()["id"]
+    # Approve it — triggers ensure_policy_approvals
+    client.patch(f"/api/proposals/{pid}/status", data={"status": "approved"})
+    with main.db_connect() as db:
+        approvals = db.execute(
+            "SELECT title FROM approval_requests WHERE entity_type='proposal' AND entity_id=?",
+            (pid,)
+        ).fetchall()
+        titles = {r["title"] for r in approvals}
+        assert "Dangerous executor (Codex CLI) requires approval" in titles
