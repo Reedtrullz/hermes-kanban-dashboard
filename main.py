@@ -402,6 +402,18 @@ def ensure_policy_approvals(db: sqlite3.Connection, proposal_id: str) -> None:
             payload={"estimated_total_cost_usd": total_cost},
         )
 
+    # Dangerous executor safety policy
+    agent_id = proposal.get("assigned_agent_id")
+    if agent_id:
+        agent = row(db.execute("SELECT executor_type, name FROM agents WHERE id=?", (agent_id,)))
+        if agent and agent.get("executor_type") in ("command-code", "codex"):
+            label = EXECUTOR_LABELS.get(agent["executor_type"], agent["executor_type"])
+            create_approval(db, "proposal", proposal_id,
+                f"Dangerous executor ({label}) requires approval",
+                "high",
+                f"Agent '{agent['name']}' uses {label} which can bypass sandboxing with --yolo/--dangerously-bypass flags. Human approval required before execution.",
+                payload={"executor_type": agent["executor_type"], "agent_id": agent_id})
+
 
 def create_schema(db: sqlite3.Connection) -> None:
     db.execute(
@@ -721,6 +733,7 @@ def seed_defaults(db: sqlite3.Connection) -> None:
         ("policy_critical_card", "Critical-risk cards require approval", {"entity_type": "proposal", "risk_level": "critical"}, "require_approval"),
         ("policy_cost_threshold", "Over-threshold cost requires approval", {"estimated_cost_usd_gt": 2.0}, "require_approval"),
         ("policy_failed_workflow", "Failed-stage workflow completion requires approval", {"workflow_failed_stage": True}, "require_approval"),
+        ("policy_dangerous_executor", "Dangerous-executor cards require approval", {"entity_type": "proposal", "executor_dangerous": True}, "require_approval"),
     ]
     for policy_id, name, condition, action in policies:
         db.execute(

@@ -37,7 +37,7 @@ def test_migrates_existing_proposals_schema(tmp_path, monkeypatch):
         assert "actual_cost_usd" in usage_cols
         assert db.execute("SELECT COUNT(*) AS n FROM agents").fetchone()["n"] >= 6
         assert db.execute("SELECT COUNT(*) AS n FROM workflow_templates").fetchone()["n"] == 3
-        assert db.execute("SELECT COUNT(*) AS n FROM approval_policies").fetchone()["n"] == 3
+        assert db.execute("SELECT COUNT(*) AS n FROM approval_policies").fetchone()["n"] == 4
 
 
 def test_health_endpoint_bypasses_auth(tmp_path, monkeypatch):
