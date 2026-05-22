@@ -95,6 +95,18 @@ def test_existing_card_api_and_agent_goal_linking(tmp_path, monkeypatch):
         assert "proposal_metadata_updated" in {r["event_type"] for r in events}
 
 
+def test_cards_page_renders_cost_helpers(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    client.post("/api/proposals", data={"title": "Rendered card"})
+
+    response = client.get("/proposals")
+
+    assert response.status_code == 200
+    assert "Rendered card" in response.text
+    assert "$0.00" in response.text
+
+
 def test_agent_crud_pause_resume_and_budget_meter_data(tmp_path, monkeypatch):
     main = load_main(tmp_path, monkeypatch)
     client = TestClient(main.app)
