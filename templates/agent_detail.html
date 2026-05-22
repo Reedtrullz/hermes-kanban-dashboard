@@ -27,6 +27,14 @@
       <p class="small" style="margin-top:4px"><strong>Executor:</strong>
         {% if exec == 'hermes' %}Hermes (native){% else %}<span class="badge" style="background:#1a2332;color:#58a6ff;border:1px solid #1f6feb33">{{ exec }}</span>{% endif %}
       </p>
+      {% if exec == 'command-code' %}
+        {% set node_ver = agent.get('node_version') %}
+        {% if node_ver and node_ver[0] is defined and node_ver[0] < 20 %}
+        <div style="margin-top:10px;padding:10px 14px;border-left:3px solid #f85149;background:#1a1417;border-radius:6px">
+          <p class="small" style="color:#f85149;margin:0"><strong>⚠ Node.js {{ node_ver[0] }}.{{ node_ver[1] }} detected.</strong> Command Code requires Node.js 20+. CLI will crash with regex error on v18. Run <code>fnm use 20</code> or upgrade.</p>
+        </div>
+        {% endif %}
+      {% endif %}
       {% if exec != 'hermes' %}
       <div style="margin-top:10px">
         <button class="btn btn-sm" hx-get="/api/agents/{{ agent.id }}/executor-status-ui" hx-target="#executor-status-result" hx-swap="innerHTML">

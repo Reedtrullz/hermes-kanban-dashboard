@@ -286,6 +286,20 @@ def get_profiles() -> list[str]:
     return []
 
 
+def get_node_version() -> tuple[int, int] | None:
+    """Return (major, minor) or None if node not found."""
+    node = shutil.which("node")
+    if not node:
+        return None
+    try:
+        result = subprocess.run([node, "--version"], capture_output=True, text=True, timeout=5)
+        v = result.stdout.strip().lstrip("v")
+        parts = v.split(".")
+        return (int(parts[0]), int(parts[1]) if len(parts) > 1 else 0)
+    except Exception:
+        return None
+
+
 def db_connect() -> sqlite3.Connection:
     db = sqlite3.connect(str(PROPOSALS_DB))
     db.row_factory = sqlite3.Row
@@ -1372,6 +1386,8 @@ async def agent_detail(request: Request, agent_id: str):
             return HTMLResponse("<h2>Not found</h2>", status_code=404)
         agent["tools"] = loads(agent.get("tools_allowed_json"), []) or []
         agent.update(agent_cost_summary(db, agent_id))
+        if agent.get("executor_type") == "command-code":
+            agent["node_version"] = get_node_version()
         agent["executor_spend_usd"] = float(db.execute(
             "SELECT COALESCE(SUM(actual_cost_usd),0) FROM usage_records WHERE scope_type='agent' AND scope_id=? AND executor_type!=''",
             (agent_id,)
