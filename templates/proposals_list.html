@@ -1,21 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Cards - Hermes{% endblock %}
+{% block nav_cards %}is-active{% endblock %}
+{% block page_title %}Cards{% endblock %}
 {% block content %}
-<div class="split" style="margin-bottom:14px">
-  <div>
-    <h2 style="font-size:20px;margin-bottom:4px">Cards</h2>
-    <p class="muted small">Kanban cards remain the center of Hermes. Goals, agents, workflows, approvals, and costs attach here.</p>
-  </div>
-</div>
-
-<div class="two-col">
+<div class="panel-layout">
   <section>
+    <p class="small muted" style="margin-bottom:16px">Kanban cards are the center of Hermes. Goals, agents, workflows, approvals, and costs attach here.</p>
     {% if proposals %}
       {% for p in proposals %}
-      <article class="card">
+      <div class="card">
         <div class="split">
-          <div>
-            <h3><a class="link" style="font-size:15px;color:var(--accent);padding:0" href="/proposals/{{ p.id }}">{{ p.title }}</a></h3>
+          <div style="min-width:0">
+            <h3 style="margin-bottom:4px"><a class="link" href="/proposals/{{ p.id }}">{{ p.title }}</a></h3>
             <div class="row small muted">
               <span class="badge badge-{{ p.status }}">{{ PROPOSAL_LABELS[p.status] }}</span>
               <span class="badge badge-{{ p.risk_level }}">{{ p.risk_level }}</span>
@@ -23,32 +19,37 @@
               <span class="reltime" data-ts="{{ p.updated_at }}"></span>
               {% if p.top_comments %}<span>{{ p.top_comments }} review{% if p.top_comments != 1 %}s{% endif %}</span>{% endif %}
             </div>
-            <div class="small muted" style="margin-top:8px">
-              {% if p.goal %}Goal: <a class="link" href="/proposals/goals/{{ p.goal.id }}">{{ p.goal.title }}</a>{% else %}No goal linked{% endif %}
-              {% if p.parent %} / Parent: <a class="link" href="/proposals/{{ p.parent.id }}">{{ p.parent.title }}</a>{% endif %}
-              {% if p.agent %} / Agent: <a class="link" href="/proposals/agents/{{ p.agent.id }}">{{ p.agent.name }}</a>{% endif %}
+            <div class="small muted" style="margin-top:6px">
+              {% if p.goal %}Goal: <a class="link" href="/proposals/goals/{{ p.goal.id }}">{{ p.goal.title }}</a>{% endif %}
+              {% if p.parent %} · Parent: <a class="link" href="/proposals/{{ p.parent.id }}">{{ p.parent.title }}</a>{% endif %}
+              {% if p.agent %} · Agent: <a class="link" href="/proposals/agents/{{ p.agent.id }}">{{ p.agent.name }}</a>{% endif %}
+              {% if not p.goal and not p.parent and not p.agent %}No links{% endif %}
             </div>
           </div>
-          <div class="badge">{{ money(p.cost_total) }}</div>
+          <span class="badge">{{ money(p.cost_total) }}</span>
         </div>
-      </article>
+      </div>
       {% endfor %}
     {% else %}
-      <div class="empty card">
-        <h2>No cards yet</h2>
-        <p>Create the first card and agents can review it.</p>
+      <div class="card empty">
+        <h3 style="margin-bottom:4px">No cards yet</h3>
+        <p class="small">Create the first card and agents can review it.</p>
       </div>
     {% endif %}
   </section>
 
-  <aside class="card">
-    <h3>New Card</h3>
-    <form action="/api/proposals" method="post">
-      <div class="field"><label>Title</label><input name="title" required autofocus placeholder="Add agent heartbeat workflow"></div>
-      <div class="field"><label>Description</label><textarea name="body" placeholder="What should be built, researched, or reviewed?"></textarea></div>
-      <div class="field"><label>Project</label><input name="board" value="default"></div>
-      <button class="btn btn-primary" type="submit">Create</button>
-    </form>
+  <aside>
+    <div class="inspector">
+      <div class="inspector-block">
+        <h3>New Card</h3>
+        <form action="/api/proposals" method="post">
+          <div class="field"><label>Title</label><input name="title" required autofocus placeholder="Add agent heartbeat workflow"></div>
+          <div class="field"><label>Description</label><textarea name="body" placeholder="What should be built, researched, or reviewed?"></textarea></div>
+          <div class="field"><label>Project</label><input name="board" value="default"></div>
+          <button class="btn btn-primary">Create Card</button>
+        </form>
+      </div>
+    </div>
   </aside>
 </div>
 {% endblock %}

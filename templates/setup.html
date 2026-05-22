@@ -1,42 +1,33 @@
 {% extends "base.html" %}
 {% block title %}Setup - Hermes{% endblock %}
+{% block nav_setup %}is-active{% endblock %}
+{% block header %}{% endblock %}
 {% block head %}
 <style>
-  main { max-width:none; padding:0; }
-  .setup-shell { min-height:calc(100vh - 53px); display:grid; grid-template-columns:280px minmax(0,1fr) 360px; background:#050608; }
-  .setup-sidebar, .setup-inspector { border-color:#1f232a; background:#090b0f; padding:18px; overflow:auto; max-height:calc(100vh - 53px); }
-  .setup-sidebar { border-right:1px solid #1f232a; }
-  .setup-inspector { border-left:1px solid #1f232a; }
+  /* Setup overrides: full-bleed 3-panel layout inside app-main */
+  .app-body { padding:0; }
+  .setup-shell { min-height:calc(100vh); display:grid; grid-template-columns:260px minmax(0,1fr) 340px; background:var(--bg); }
+  .setup-sidebar, .setup-inspector { background:var(--bg2); padding:18px; overflow:auto; max-height:100vh; }
+  .setup-sidebar { border-right:1px solid var(--border); }
+  .setup-inspector { border-left:1px solid var(--border); }
   .setup-canvas-wrap { min-width:0; padding:18px; overflow:auto; }
-  .setup-canvas { position:relative; min-height:680px; border:1px solid #222831; border-radius:8px; background:#080a0d; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.015); overflow:auto; }
+  .setup-canvas { position:relative; min-height:680px; border:1px solid var(--border); border-radius:8px; background:var(--surface); box-shadow:inset 0 0 0 1px rgba(255,255,255,0.015); overflow:auto; }
   .setup-canvas-inner { position:relative; z-index:2; min-width:760px; min-height:640px; padding:76px 56px 56px; }
   .setup-links { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:1; }
   .setup-title { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:18px; }
   .setup-title h2 { font-size:17px; }
-  .section-label { color:#686f7b; font-size:10px; letter-spacing:.13em; text-transform:uppercase; font-weight:750; margin:22px 0 9px; }
-  .side-list { display:grid; gap:6px; }
-  .side-row { color:var(--text); text-decoration:none; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:6px; border:1px solid transparent; }
-  .side-row:hover, .side-row.is-active { background:#15181d; border-color:#282e37; }
-  .side-row-main { display:flex; align-items:center; gap:9px; min-width:0; }
-  .dot { width:9px; height:9px; border-radius:50%; background:var(--accent); flex:0 0 auto; box-shadow:0 0 12px currentColor; }
-  .dot-paused { background:var(--purple); color:var(--purple); }
-  .dot-disabled { background:var(--red); color:var(--red); }
-  .side-row-text { min-width:0; }
-  .side-row-text strong { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .side-row-text span { display:block; color:var(--muted); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .setup-tabs { position:absolute; left:18px; top:18px; display:flex; gap:6px; z-index:3; }
-  .setup-tabs a { color:var(--muted); text-decoration:none; font-size:12px; padding:7px 10px; border-radius:6px; border:1px solid #252b33; background:#0d1015; }
+  .setup-tabs a { color:var(--muted); text-decoration:none; font-size:12px; padding:7px 10px; border-radius:6px; border:1px solid var(--border); background:var(--surface); }
   .setup-tabs a.is-active { color:white; border-color:#3b82f6; background:#14233b; }
   .canvas-actions { position:absolute; right:18px; top:18px; z-index:3; display:flex; gap:8px; }
-  .icon-btn { width:32px; min-height:32px; padding:0; border-radius:6px; font-weight:800; }
   .org-level { display:flex; justify-content:center; gap:42px; margin-bottom:80px; }
-  .agent-node, .workflow-node { display:block; color:var(--text); text-decoration:none; border:1px solid #262b32; background:#171a1f; border-radius:8px; box-shadow:0 12px 34px rgba(0,0,0,.28); }
+  .agent-node, .workflow-node { display:block; color:var(--text); text-decoration:none; border:1px solid var(--border); background:#131720; border-radius:8px; box-shadow:0 12px 34px rgba(0,0,0,.28); }
   .agent-node { width:250px; padding:18px; }
   .workflow-node { width:220px; padding:16px; flex:0 0 auto; }
   .agent-node:hover, .workflow-node:hover, .agent-node.is-active, .workflow-node.is-active { border-color:#3b82f6; background:#1c2027; }
   .node-main { display:flex; gap:13px; align-items:center; }
-  .node-icon { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#272c35; color:#e6edf3; font-weight:800; position:relative; flex:0 0 auto; }
-  .node-icon .dot { position:absolute; right:0; bottom:2px; border:2px solid #171a1f; }
+  .node-icon { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--border2); color:#e6edf3; font-weight:800; position:relative; flex:0 0 auto; }
+  .node-icon .dot { position:absolute; right:0; bottom:2px; border:2px solid #131720; }
   .node-text { min-width:0; }
   .node-text h3 { font-size:15px; line-height:1.15; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .node-text p { color:var(--muted); font-size:12px; line-height:1.35; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -47,18 +38,10 @@
   #workflowCanvas .workflow-stage-row { gap:18px; padding-top:90px; }
   #workflowCanvas .workflow-node { width:150px; }
   .workflow-empty { padding-top:150px; text-align:center; color:var(--muted); }
-  .stage-position { width:28px; height:28px; border-radius:50%; background:#262b32; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:800; margin-bottom:12px; }
-  .quick-form { border:1px solid #222831; border-radius:8px; background:#0d1015; padding:12px; display:grid; gap:8px; }
-  .quick-form select, .quick-form input, .quick-form textarea, .mini-input { width:100%; background:#050608; border:1px solid #272d36; border-radius:5px; padding:7px 9px; color:var(--text); font-size:12px; font-family:inherit; }
-  .inspector-block { border-bottom:1px solid #222831; padding-bottom:16px; margin-bottom:16px; }
-  .inspector-block h3 { font-size:15px; margin-bottom:10px; }
-  .setup-inspector .field input, .setup-inspector .field textarea, .setup-inspector .field select { background:#050608; border-color:#272d36; }
-  .setup-inspector .field textarea { min-height:74px; }
-  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .form-grid .wide { grid-column:1 / -1; }
+  .stage-position { width:28px; height:28px; border-radius:50%; background:var(--border2); display:flex; align-items:center; justify-content:center; color:white; font-size:12px; font-weight:800; margin-bottom:12px; }
   @media (max-width:1100px) {
-    .setup-shell { grid-template-columns:230px minmax(0,1fr); }
-    .setup-inspector { grid-column:1 / -1; border-left:0; border-top:1px solid #1f232a; max-height:none; }
+    .setup-shell { grid-template-columns:220px minmax(0,1fr); }
+    .setup-inspector { grid-column:1 / -1; border-left:0; border-top:1px solid var(--border); max-height:none; }
   }
   @media (max-width:760px) {
     .setup-shell { grid-template-columns:1fr; }
@@ -209,7 +192,7 @@
     <form action="/api/proposals/agents/{{ selected_agent.id }}/status" method="post" class="row" style="margin-top:12px">
       <input type="hidden" name="return_to" value="{{ return_to_org }}">
       {% for status in AGENT_STATUSES %}
-      <button class="btn {% if selected_agent.status == status %}btn-primary{% endif %}" name="status" value="{{ status }}">{{ status }}</button>
+      <button class="btn btn-sm {% if selected_agent.status == status %}btn-primary{% endif %}" name="status" value="{{ status }}">{{ status }}</button>
       {% endfor %}
     </form>
     {% elif active_view == 'workflow' and selected_template %}
@@ -227,7 +210,7 @@
       <h3>Add Stage</h3>
       <form action="/api/proposals/workflow-templates/{{ selected_template.id }}/stages" method="post">
         <div class="field"><label>Name</label><input name="name" placeholder="Stage name" required></div>
-        <div class="field"><label>Description</label><textarea name="description"></textarea></div>
+        <div class="field"><label>Description</label><textarea name="description" style="min-height:60px"></textarea></div>
         <div class="field"><label>Assigned Agent</label><select name="assigned_agent_id"><option value="">Unassigned</option>{% for agent in agents %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}</select></div>
         <div class="field"><label>Handoff Target</label><select name="handoff_agent_id"><option value="">No handoff</option>{% for agent in agents %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}</select></div>
         <button class="btn">Add Stage</button>
@@ -240,7 +223,7 @@
         <input type="hidden" name="return_to" value="{{ return_to_workflow }}">
         <div class="field"><label>Name</label><input name="name" value="{{ selected_stage.name }}" required></div>
         <div class="field"><label>Position</label><input type="number" min="1" name="position" value="{{ selected_stage.position }}"></div>
-        <div class="field"><label>Description</label><textarea name="description">{{ selected_stage.description }}</textarea></div>
+        <div class="field"><label>Description</label><textarea name="description" style="min-height:60px">{{ selected_stage.description }}</textarea></div>
         <div class="field"><label>Assigned Agent</label><select name="assigned_agent_id"><option value="">Unassigned</option>{% for agent in agents %}<option value="{{ agent.id }}" {% if selected_stage.assigned_agent_id == agent.id %}selected{% endif %}>{{ agent.name }}</option>{% endfor %}</select></div>
         <div class="field"><label>Handoff Target</label><select name="handoff_agent_id"><option value="">No handoff</option>{% for agent in agents %}<option value="{{ agent.id }}" {% if selected_stage.handoff_agent_id == agent.id %}selected{% endif %}>{{ agent.name }}</option>{% endfor %}</select></div>
         <button class="btn btn-primary">Save Stage</button>

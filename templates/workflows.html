@@ -1,39 +1,53 @@
 {% extends "base.html" %}
 {% block title %}Workflows - Hermes{% endblock %}
+{% block nav_workflows %}is-active{% endblock %}
+{% block page_title %}Workflows{% endblock %}
 {% block content %}
-<div class="two-col">
+<div class="panel-layout">
   <section>
-    <h2 style="font-size:20px;margin-bottom:12px">Workflow Runs</h2>
+    <div class="section-label">Active Runs</div>
     {% for run in runs %}
-    <article class="card">
+    <div class="card">
       <div class="split">
-        <div>
-          <h3><a class="link" style="color:var(--accent);padding:0" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a></h3>
-          <p class="small muted">{% if run.proposal_title %}Card: {{ run.proposal_title }}{% endif %}{% if run.goal_title %} Goal: {{ run.goal_title }}{% endif %}</p>
+        <div style="min-width:0">
+          <h3 style="margin-bottom:4px"><a class="link" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a></h3>
+          <p class="small muted">
+            {% if run.proposal_title %}Card: {{ run.proposal_title }}{% endif %}
+            {% if run.goal_title %} · Goal: {{ run.goal_title }}{% endif %}
+          </p>
         </div>
         <span class="badge badge-{{ run.status }}">{{ run.status }}</span>
       </div>
-    </article>
+    </div>
     {% endfor %}
-    {% if not runs %}<div class="empty card">No workflow runs yet.</div>{% endif %}
+    {% if not runs %}<div class="card empty">No workflow runs yet. Start one from the inspector.</div>{% endif %}
 
-    <h2 style="font-size:20px;margin:22px 0 12px">Templates</h2>
+    <div class="section-label">Templates</div>
     {% for template in templates_list %}
-    <article class="card">
-      <h3>{{ template.name }}</h3>
-      <p class="small muted">{{ template.description }}</p>
-      <div class="row" style="margin-top:10px">{% for s in template.stages %}<span class="badge">{{ s.position }}. {{ s.name }}</span>{% endfor %}</div>
-    </article>
+    <div class="card">
+      <h3 style="margin-bottom:4px">{{ template.name }}</h3>
+      <p class="small muted" style="margin-bottom:8px">{{ template.description }}</p>
+      <div class="row">
+        {% for s in template.stages %}
+        <span class="badge">{{ s.position }}. {{ s.name }}</span>
+        {% endfor %}
+      </div>
+    </div>
     {% endfor %}
   </section>
-  <aside class="card">
-    <h3>Start Workflow</h3>
-    <form action="/api/proposals/workflows/start" method="post">
-      <div class="field"><label>Template</label><select name="template_id">{% for t in templates_list %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select></div>
-      <div class="field"><label>Card</label><select name="proposal_id"><option value="">No card</option>{% for p in proposals %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select></div>
-      <div class="field"><label>Goal</label><select name="goal_id"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.id }}">{{ g.title }}</option>{% endfor %}</select></div>
-      <button class="btn btn-primary">Start</button>
-    </form>
+
+  <aside>
+    <div class="inspector">
+      <div class="inspector-block">
+        <h3>Start Workflow</h3>
+        <form action="/api/proposals/workflows/start" method="post">
+          <div class="field"><label>Template</label><select name="template_id">{% for t in templates_list %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select></div>
+          <div class="field"><label>Card</label><select name="proposal_id"><option value="">No card</option>{% for p in proposals %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select></div>
+          <div class="field"><label>Goal</label><select name="goal_id"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.id }}">{{ g.title }}</option>{% endfor %}</select></div>
+          <button class="btn btn-primary">Start</button>
+        </form>
+      </div>
+    </div>
   </aside>
 </div>
 {% endblock %}

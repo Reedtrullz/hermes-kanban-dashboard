@@ -1,22 +1,22 @@
 <div id="proposal-content" hx-get="/api/proposals/{{ proposal.id }}/fragment" hx-trigger="every 5s" hx-swap="outerHTML">
-  <div class="two-col">
+  <div class="panel-layout">
     <section>
       <div class="card">
         <div class="split">
           <div>
-            <h2 style="font-size:22px;margin-bottom:6px">{{ proposal.title }}</h2>
+            <h2 style="font-size:20px;margin-bottom:6px">{{ proposal.title }}</h2>
             <div class="row small muted">
               <span class="badge badge-{{ proposal.status }}">{{ PROPOSAL_LABELS[proposal.status] }}</span>
               <span class="badge badge-{{ proposal.risk_level }}">{{ proposal.risk_level }}</span>
               <span>{{ proposal.board }}</span>
               <span>by {{ proposal.author }}</span>
               <span class="reltime" data-ts="{{ proposal.updated_at }}"></span>
-              <span>{{ money(proposal.cost_total) }}</span>
+              <span class="badge">{{ money(proposal.cost_total) }}</span>
             </div>
             <div class="small muted" style="margin-top:8px">
-              {% if proposal.goal %}Goal: <a class="link" href="/proposals/goals/{{ proposal.goal.id }}">{{ proposal.goal.title }}</a>{% else %}No goal linked{% endif %}
-              {% if proposal.parent %} / Parent: <a class="link" href="/proposals/{{ proposal.parent.id }}">{{ proposal.parent.title }}</a>{% endif %}
-              {% if proposal.agent %} / Agent: <a class="link" href="/proposals/agents/{{ proposal.agent.id }}">{{ proposal.agent.name }}</a>{% endif %}
+              {% if proposal.goal %}Goal: <a class="link" href="/proposals/goals/{{ proposal.goal.id }}">{{ proposal.goal.title }}</a>{% endif %}
+              {% if proposal.parent %} · Parent: <a class="link" href="/proposals/{{ proposal.parent.id }}">{{ proposal.parent.title }}</a>{% endif %}
+              {% if proposal.agent %} · Agent: <a class="link" href="/proposals/agents/{{ proposal.agent.id }}">{{ proposal.agent.name }}</a>{% endif %}
             </div>
           </div>
         </div>
@@ -24,7 +24,7 @@
       </div>
 
       <div class="card">
-        <h3>Card Status</h3>
+        <h4>Card Status</h4>
         <div class="row">
           {% for s in ["review","approved","implemented","rejected"] %}
           <form action="/api/proposals/{{ proposal.id }}/status" method="post">
@@ -39,7 +39,7 @@
       </div>
 
       <div class="card">
-        <h3>Acceptance Criteria</h3>
+        <h4>Acceptance Criteria</h4>
         {% if proposal.criteria %}
           <ul class="small" style="margin-left:18px">
           {% for item in proposal.criteria %}<li style="margin-bottom:4px">{{ item }}</li>{% endfor %}
@@ -50,15 +50,15 @@
       </div>
 
       <div class="card">
-        <h3>Agent Reviews</h3>
+        <h4>Agent Reviews</h4>
         {% set top_level = comments|selectattr('parent_id','none')|list %}
         {% for c in top_level %}
         {% set replies = comments|selectattr('parent_id','equalto',c.id)|list %}
-        <div class="card" style="background:var(--bg);border-left:3px solid var(--accent)">
+        <div class="card card-accent card-inset">
           <div class="row small"><strong>{{ c.author }}</strong><span class="muted reltime" data-ts="{{ c.created_at }}"></span></div>
           <div class="body md-body">{{ c.body }}</div>
           {% for r in replies %}
-          <div class="card" style="background:var(--surface2);margin:8px 0 0 18px">
+          <div class="card card-inset" style="margin:8px 0 0 18px">
             <div class="row small"><strong>{{ r.author }}</strong><span class="muted reltime" data-ts="{{ r.created_at }}"></span></div>
             <div class="body md-body">{{ r.body }}</div>
           </div>
@@ -66,7 +66,7 @@
           <form action="/api/proposals/{{ proposal.id }}/comments" method="post" style="margin-top:8px">
             <input type="hidden" name="author" value="user">
             <input type="hidden" name="parent_id" value="{{ c.id }}">
-            <div class="row"><input name="body" required placeholder="Reply..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px;color:var(--text)"><button class="btn">Reply</button></div>
+            <div class="row"><input name="body" required placeholder="Reply..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 10px;color:var(--text);font-size:13px"><button class="btn">Reply</button></div>
           </form>
         </div>
         {% endfor %}
@@ -74,7 +74,7 @@
       </div>
 
       <div class="card">
-        <h3>Timeline</h3>
+        <h4>Timeline</h4>
         <div class="timeline">
           {% for e in events %}
           <div class="timeline-item">
@@ -88,42 +88,46 @@
     </section>
 
     <aside>
-      <div class="card">
-        <h3>Edit Operations</h3>
-        <form action="/api/proposals/{{ proposal.id }}/metadata" method="post">
-          <div class="field"><label>Goal</label><select name="goal_id"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.id }}" {% if proposal.goal_id == g.id %}selected{% endif %}>{{ g.title }}</option>{% endfor %}</select></div>
-          <div class="field"><label>Parent Card</label><select name="parent_id"><option value="">No parent</option>{% for p in parents %}<option value="{{ p.id }}" {% if proposal.parent_id == p.id %}selected{% endif %}>{{ p.title }}</option>{% endfor %}</select></div>
-          <div class="field"><label>Assigned Agent</label><select name="assigned_agent_id"><option value="">Unassigned</option>{% for a in agents %}<option value="{{ a.id }}" {% if proposal.assigned_agent_id == a.id %}selected{% endif %}>{{ a.name }} - {{ a.role_title }}</option>{% endfor %}</select></div>
-          <div class="field"><label>Risk</label><select name="risk_level">{% for r in RISK_LEVELS %}<option value="{{ r }}" {% if proposal.risk_level == r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
-          <div class="field"><label>Acceptance Criteria</label><textarea name="acceptance_criteria">{{ json_to_lines(proposal.acceptance_criteria_json) }}</textarea></div>
-          <div class="field"><label>Estimated Cost USD</label><input name="estimated_cost_usd" type="number" step="0.01" value="{{ proposal.estimated_cost_usd }}"></div>
-          <div class="field"><label>Actual Cost USD</label><input name="actual_cost_usd" type="number" step="0.01" value="{{ proposal.actual_cost_usd }}"></div>
-          <button class="btn btn-primary">Save</button>
-        </form>
-      </div>
+      <div class="inspector">
+        <div class="inspector-block">
+          <h3>Edit Operations</h3>
+          <form action="/api/proposals/{{ proposal.id }}/metadata" method="post">
+            <div class="field"><label>Goal</label><select name="goal_id"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.id }}" {% if proposal.goal_id == g.id %}selected{% endif %}>{{ g.title }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Parent Card</label><select name="parent_id"><option value="">No parent</option>{% for p in parents %}<option value="{{ p.id }}" {% if proposal.parent_id == p.id %}selected{% endif %}>{{ p.title }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Assigned Agent</label><select name="assigned_agent_id"><option value="">Unassigned</option>{% for a in agents %}<option value="{{ a.id }}" {% if proposal.assigned_agent_id == a.id %}selected{% endif %}>{{ a.name }} - {{ a.role_title }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Risk</label><select name="risk_level">{% for r in RISK_LEVELS %}<option value="{{ r }}" {% if proposal.risk_level == r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Acceptance Criteria</label><textarea name="acceptance_criteria">{{ json_to_lines(proposal.acceptance_criteria_json) }}</textarea></div>
+            <div class="form-grid">
+              <div class="field"><label>Estimated Cost</label><input name="estimated_cost_usd" type="number" step="0.01" value="{{ proposal.estimated_cost_usd }}"></div>
+              <div class="field"><label>Actual Cost</label><input name="actual_cost_usd" type="number" step="0.01" value="{{ proposal.actual_cost_usd }}"></div>
+            </div>
+            <button class="btn btn-primary">Save</button>
+          </form>
+        </div>
 
-      <div class="card">
-        <h3>Workflow Runs</h3>
-        {% for run in workflow_runs %}
-        <p class="small"><a class="link" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a> <span class="badge badge-{{ run.status }}">{{ run.status }}</span></p>
-        {% endfor %}
-        {% if not workflow_runs %}<p class="muted small">No workflow runs.</p>{% endif %}
-      </div>
+        <div class="inspector-block">
+          <h4>Workflow Runs</h4>
+          {% for run in workflow_runs %}
+          <p class="small" style="margin-bottom:4px"><a class="link" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a> <span class="badge badge-{{ run.status }}">{{ run.status }}</span></p>
+          {% endfor %}
+          {% if not workflow_runs %}<p class="muted small">No workflow runs.</p>{% endif %}
+        </div>
 
-      <div class="card">
-        <h3>Approvals</h3>
-        {% for approval in approvals %}
-        <p class="small"><span class="badge badge-{{ approval.risk_level }}">{{ approval.risk_level }}</span> {{ approval.title }} <span class="muted">{{ approval.status }}</span></p>
-        {% endfor %}
-        {% if not approvals %}<p class="muted small">No approval requests.</p>{% endif %}
-      </div>
+        <div class="inspector-block">
+          <h4>Approvals</h4>
+          {% for approval in approvals %}
+          <p class="small" style="margin-bottom:4px"><span class="badge badge-{{ approval.risk_level }}">{{ approval.risk_level }}</span> {{ approval.title }} <span class="muted">{{ approval.status }}</span></p>
+          {% endfor %}
+          {% if not approvals %}<p class="muted small">No approval requests.</p>{% endif %}
+        </div>
 
-      <div class="card">
-        <h3>Handoffs</h3>
-        {% for h in handoffs %}
-        <p class="small">{{ h.from_agent or "Human" }} -> {{ h.to_agent or "Unassigned" }} <span class="badge">{{ h.status }}</span></p>
-        {% endfor %}
-        {% if not handoffs %}<p class="muted small">No handoffs.</p>{% endif %}
+        <div class="inspector-block">
+          <h4>Handoffs</h4>
+          {% for h in handoffs %}
+          <p class="small" style="margin-bottom:4px">{{ h.from_agent or "Human" }} → {{ h.to_agent or "Unassigned" }} <span class="badge">{{ h.status }}</span></p>
+          {% endfor %}
+          {% if not handoffs %}<p class="muted small">No handoffs.</p>{% endif %}
+        </div>
       </div>
     </aside>
   </div>

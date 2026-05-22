@@ -1,46 +1,56 @@
 {% extends "base.html" %}
 {% block title %}Agents - Hermes{% endblock %}
+{% block nav_agents %}is-active{% endblock %}
+{% block page_title %}Agents{% endblock %}
 {% block content %}
-<div class="two-col">
+<div class="panel-layout">
   <section>
-    <h2 style="font-size:20px;margin-bottom:12px">Agents</h2>
-    <div class="grid">
+    <div class="list-grid">
       {% for agent in agents %}
-      <article class="card">
+      <div class="card">
         <div class="split">
-          <div>
-            <h3><a class="link" style="color:var(--accent);padding:0" href="/proposals/agents/{{ agent.id }}">{{ agent.name }}</a></h3>
+          <div style="min-width:0">
+            <h3 style="margin-bottom:4px"><a class="link" href="/proposals/agents/{{ agent.id }}">{{ agent.name }}</a></h3>
             <p class="small muted">{{ agent.role_title }}</p>
           </div>
           <span class="badge badge-{{ agent.status }}">{{ agent.status }}</span>
         </div>
-        <p class="small" style="margin:10px 0">{{ agent.purpose }}</p>
+        <p class="small" style="margin:8px 0">{{ agent.purpose }}</p>
         <div class="small muted">{{ agent.provider }} / {{ agent.model_name }}</div>
         <div class="small" style="margin-top:8px">This month: {{ money(agent.monthly_actual_spend_usd) }} / {{ money(agent.monthly_budget_usd) }}</div>
         <div class="meter"><span style="width:{% if agent.monthly_budget_usd %}{{ [100, (agent.spent_usd / agent.monthly_budget_usd * 100)|round(0)]|min }}{% else %}0{% endif %}%"></span></div>
-        <div class="small muted" style="margin-top:6px">Actual all-time: {{ money(agent.actual_spend_usd) }} / Estimated: {{ money(agent.estimated_spend_usd) }}</div>
-        <div class="tiny muted" style="margin-top:4px">{{ agent.usage_record_count }} usage record{% if agent.usage_record_count != 1 %}s{% endif %}</div>
+        <div class="tiny muted" style="margin-top:4px">{{ agent.usage_record_count }} usage record{% if agent.usage_record_count != 1 %}s{% endif %} · All-time: {{ money(agent.actual_spend_usd) }}</div>
         <div class="row" style="margin-top:10px">
-          <form action="/api/proposals/agents/{{ agent.id }}/status" method="post"><input type="hidden" name="status" value="{% if agent.status == 'active' %}paused{% else %}active{% endif %}"><button class="btn">{% if agent.status == 'active' %}Pause{% else %}Resume{% endif %}</button></form>
-          <form action="/api/proposals/agents/{{ agent.id }}/status" method="post"><input type="hidden" name="status" value="disabled"><button class="btn btn-danger">Disable</button></form>
+          <form action="/api/proposals/agents/{{ agent.id }}/status" method="post"><input type="hidden" name="status" value="{% if agent.status == 'active' %}paused{% else %}active{% endif %}"><button class="btn btn-sm">{% if agent.status == 'active' %}Pause{% else %}Resume{% endif %}</button></form>
+          <form action="/api/proposals/agents/{{ agent.id }}/status" method="post"><input type="hidden" name="status" value="disabled"><button class="btn btn-sm btn-danger">Disable</button></form>
         </div>
-      </article>
+      </div>
       {% endfor %}
     </div>
+    {% if not agents %}<div class="card empty">No agents configured. Create one or use Setup to scaffold from templates.</div>{% endif %}
   </section>
-  <aside class="card">
-    <h3>Create Agent</h3>
-    <form action="/api/proposals/agents" method="post">
-      <div class="field"><label>Name</label><input name="name" required></div>
-      <div class="field"><label>Role Title</label><input name="role_title" required></div>
-      <div class="field"><label>Purpose</label><textarea name="purpose"></textarea></div>
-      <div class="field"><label>System Prompt</label><textarea name="system_prompt"></textarea></div>
-      <div class="field"><label>Provider</label><input name="provider" value="manual"></div>
-      <div class="field"><label>Model</label><input name="model_name" value="manual"></div>
-      <div class="field"><label>Allowed Tools</label><textarea name="tools_allowed" placeholder="One tool per line"></textarea></div>
-      <div class="field"><label>Monthly Budget USD</label><input name="monthly_budget_usd" type="number" step="0.01" value="0"></div>
-      <button class="btn btn-primary">Create</button>
-    </form>
+
+  <aside>
+    <div class="inspector">
+      <div class="inspector-block">
+        <h3>Create Agent</h3>
+        <form action="/api/proposals/agents" method="post">
+          <div class="form-grid">
+            <div class="field"><label>Name</label><input name="name" required></div>
+            <div class="field"><label>Role Title</label><input name="role_title" required></div>
+          </div>
+          <div class="field"><label>Purpose</label><textarea name="purpose"></textarea></div>
+          <div class="field"><label>System Prompt</label><textarea name="system_prompt"></textarea></div>
+          <div class="form-grid">
+            <div class="field"><label>Provider</label><input name="provider" value="manual"></div>
+            <div class="field"><label>Model</label><input name="model_name" value="manual"></div>
+          </div>
+          <div class="field"><label>Allowed Tools</label><textarea name="tools_allowed" placeholder="One tool per line"></textarea></div>
+          <div class="field"><label>Monthly Budget USD</label><input name="monthly_budget_usd" type="number" step="0.01" value="0"></div>
+          <button class="btn btn-primary">Create Agent</button>
+        </form>
+      </div>
+    </div>
   </aside>
 </div>
 {% endblock %}

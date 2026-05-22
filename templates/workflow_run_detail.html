@@ -1,71 +1,112 @@
 {% extends "base.html" %}
 {% block title %}Workflow Run - Hermes{% endblock %}
+{% block nav_workflows %}is-active{% endblock %}
+{% block header %}
+<div class="app-header">
+  <div class="breadcrumb">
+    <a href="/proposals/workflows">Workflows</a>
+    <span>›</span>
+    <a href="/proposals/workflows/runs/{{ run.id }}" style="color:var(--text)">{{ run.template_name }}</a>
+  </div>
+</div>
+{% endblock %}
 {% block content %}
-<a class="link" href="/proposals/workflows">Back to workflows</a>
-<div class="two-col">
+<div class="panel-layout">
   <section>
     <div class="card">
-      <div class="split"><div><h2>{{ run.template_name }}</h2><p class="small muted">{{ run.template_description }}</p></div><span class="badge badge-{{ run.status }}">{{ run.status }}</span></div>
-      <p class="small" style="margin-top:10px">{% if run.proposal_title %}Card: {{ run.proposal_title }}{% endif %}{% if run.goal_title %} Goal: {{ run.goal_title }}{% endif %}</p>
+      <div class="split">
+        <div>
+          <h2 style="font-size:20px;margin-bottom:4px">{{ run.template_name }}</h2>
+          <p class="small muted">{{ run.template_description }}</p>
+        </div>
+        <span class="badge badge-{{ run.status }}">{{ run.status }}</span>
+      </div>
+      <p class="small" style="margin-top:8px">
+        {% if run.proposal_title %}Card: {{ run.proposal_title }}{% endif %}
+        {% if run.goal_title %} · Goal: {{ run.goal_title }}{% endif %}
+      </p>
       <div class="row" style="margin-top:10px">
         {% for status in WORKFLOW_RUN_STATUSES %}
-        <form action="/api/proposals/workflows/runs/{{ run.id }}/status" method="post"><input type="hidden" name="status" value="{{ status }}"><button class="btn {% if run.status == status %}btn-primary{% endif %}">{{ status }}</button></form>
+        <form action="/api/proposals/workflows/runs/{{ run.id }}/status" method="post"><input type="hidden" name="status" value="{{ status }}"><button class="btn btn-sm {% if run.status == status %}btn-primary{% endif %}">{{ status }}</button></form>
         {% endfor %}
       </div>
     </div>
+
     <div class="card">
-      <h3>Stages</h3>
+      <h4>Stages</h4>
       <table class="table">
         <tr><th>Stage</th><th>Status</th><th>Update</th></tr>
         {% for stage in stages %}
         <tr>
           <td>
-            {{ stage.position }}. {{ stage.name }}
-            <div class="tiny muted">
+            <strong>{{ stage.position }}. {{ stage.name }}</strong>
+            <div class="tiny muted" style="margin-top:2px">
               Owner: {{ stage.assigned_agent_name or "Unassigned" }}{% if stage.handoff_agent_name %} · Handoff: {{ stage.handoff_agent_name }}{% endif %}
             </div>
-            {% if stage.notes %}<div class="muted tiny">{{ stage.notes }}</div>{% endif %}
+            {% if stage.notes %}<div class="muted tiny" style="margin-top:2px">{{ stage.notes }}</div>{% endif %}
           </td>
           <td><span class="badge badge-{{ stage.status }}">{{ stage.status }}</span></td>
           <td>
             <form action="/api/proposals/workflows/runs/{{ run.id }}/stages/{{ stage.id }}" method="post" class="row">
-              <select name="status"><option>pending</option><option {% if stage.status == 'current' %}selected{% endif %}>current</option><option>completed</option><option>failed</option><option>skipped</option></select>
-              <input name="notes" placeholder="notes" value="{{ stage.notes }}" style="min-width:120px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px;color:var(--text)">
-              <button class="btn">Save</button>
+              <select name="status" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px;color:var(--text);font-size:12px"><option>pending</option><option {% if stage.status == 'current' %}selected{% endif %}>current</option><option>completed</option><option>failed</option><option>skipped</option></select>
+              <input name="notes" placeholder="notes" value="{{ stage.notes }}" style="min-width:100px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px;color:var(--text);font-size:12px">
+              <button class="btn btn-sm">Save</button>
             </form>
           </td>
         </tr>
         {% endfor %}
       </table>
     </div>
+
     <div class="card">
-      <h3>Handoff Timeline</h3>
+      <h4>Handoff Timeline</h4>
       {% for h in handoffs %}
-      <div class="card" style="background:var(--bg)">
-        <p class="small">{{ h.from_agent or "Human" }} -> {{ h.to_agent or "Unassigned" }} <span class="badge">{{ h.status }}</span></p>
-        <p class="small muted">{{ h.reason }}</p>
-        <p class="tiny muted">{{ h.context_summary }}</p>
+      <div class="card card-inset" style="margin-bottom:8px">
+        <div class="row small">
+          <span>{{ h.from_agent or "Human" }} → {{ h.to_agent or "Unassigned" }}</span>
+          <span class="badge">{{ h.status }}</span>
+        </div>
+        {% if h.reason %}<p class="small muted" style="margin-top:4px">{{ h.reason }}</p>{% endif %}
+        {% if h.context_summary %}<p class="tiny muted">{{ h.context_summary }}</p>{% endif %}
       </div>
       {% endfor %}
       {% if not handoffs %}<p class="muted small">No handoffs yet.</p>{% endif %}
     </div>
-    <div class="card"><h3>Timeline</h3><div class="timeline">{% for e in events %}<div class="timeline-item"><div class="small"><strong>{{ e.event_type }}</strong></div><div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div></div>{% endfor %}</div></div>
-  </section>
-  <aside>
+
     <div class="card">
-      <h3>Create Handoff</h3>
-      <form action="/api/proposals/workflows/runs/{{ run.id }}/handoffs" method="post">
-        <div class="field"><label>From Agent</label><select name="from_agent_id"><option value="">Human</option>{% for a in agents %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
-        <div class="field"><label>To Agent</label><select name="to_agent_id"><option value="">Unassigned</option>{% for a in agents %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
-        <div class="field"><label>Reason</label><input name="reason"></div>
-        <div class="field"><label>Context Summary</label><textarea name="context_summary"></textarea></div>
-        <button class="btn btn-primary">Request Handoff</button>
-      </form>
+      <h4>Timeline</h4>
+      <div class="timeline">
+        {% for e in events %}
+        <div class="timeline-item">
+          <div class="small"><strong>{{ e.event_type }}</strong></div>
+          <div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div>
+        </div>
+        {% endfor %}
+        {% if not events %}<p class="muted small">No audit events yet.</p>{% endif %}
+      </div>
     </div>
-    <div class="card">
-      <h3>Approvals</h3>
-      {% for a in approvals %}<p class="small"><span class="badge badge-{{ a.risk_level }}">{{ a.risk_level }}</span> {{ a.title }} <span class="muted">{{ a.status }}</span></p>{% endfor %}
-      {% if not approvals %}<p class="muted small">No approvals.</p>{% endif %}
+  </section>
+
+  <aside>
+    <div class="inspector">
+      <div class="inspector-block">
+        <h3>Create Handoff</h3>
+        <form action="/api/proposals/workflows/runs/{{ run.id }}/handoffs" method="post">
+          <div class="field"><label>From Agent</label><select name="from_agent_id"><option value="">Human</option>{% for a in agents %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+          <div class="field"><label>To Agent</label><select name="to_agent_id"><option value="">Unassigned</option>{% for a in agents %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
+          <div class="field"><label>Reason</label><input name="reason"></div>
+          <div class="field"><label>Context Summary</label><textarea name="context_summary" style="min-height:60px"></textarea></div>
+          <button class="btn btn-primary">Request Handoff</button>
+        </form>
+      </div>
+
+      <div class="inspector-block">
+        <h4>Approvals</h4>
+        {% for a in approvals %}
+        <p class="small" style="margin-bottom:4px"><span class="badge badge-{{ a.risk_level }}">{{ a.risk_level }}</span> {{ a.title }} <span class="muted">{{ a.status }}</span></p>
+        {% endfor %}
+        {% if not approvals %}<p class="muted small">No approvals.</p>{% endif %}
+      </div>
     </div>
   </aside>
 </div>

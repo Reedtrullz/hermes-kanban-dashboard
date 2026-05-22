@@ -1,45 +1,106 @@
 {% extends "base.html" %}
 {% block title %}{{ goal.title }} - Hermes{% endblock %}
+{% block nav_goals %}is-active{% endblock %}
+{% block header %}
+<div class="app-header">
+  <div class="breadcrumb">
+    <a href="/proposals/goals">Goals</a>
+    <span>›</span>
+    <a href="/proposals/goals/{{ goal.id }}" style="color:var(--text)">{{ goal.title }}</a>
+  </div>
+</div>
+{% endblock %}
 {% block content %}
-<a class="link" href="/proposals/goals">Back to goals</a>
-<div class="two-col">
+<div class="panel-layout">
   <section>
     <div class="card">
-      <div class="split"><div><h2>{{ goal.title }}</h2><p class="small muted">{{ goal.owner_type }}:{{ goal.owner_id }}</p></div><div class="row"><span class="badge badge-{{ goal.priority }}">{{ goal.priority }}</span><span class="badge badge-{{ goal.status }}">{{ goal.status }}</span></div></div>
-      <p class="body" style="margin-top:12px">{{ goal.desired_outcome }}</p>
-      <p class="small" style="margin-top:8px">Metric: {{ goal.success_metric or "Not set" }}</p>
-      <p class="small">Total cost: {{ money(cost_total) }}</p>
+      <div class="split">
+        <div>
+          <h2 style="font-size:20px;margin-bottom:6px">{{ goal.title }}</h2>
+          <p class="small muted">{{ goal.owner_type }}:{{ goal.owner_id }}</p>
+        </div>
+        <div class="row">
+          <span class="badge badge-{{ goal.priority }}">{{ goal.priority }}</span>
+          <span class="badge badge-{{ goal.status }}">{{ goal.status }}</span>
+        </div>
+      </div>
+      {% if goal.desired_outcome %}<p class="body" style="margin-top:12px">{{ goal.desired_outcome }}</p>{% endif %}
+      <div class="row small muted" style="margin-top:10px">
+        <span>Metric: {{ goal.success_metric or "Not set" }}</span>
+        <span>Total cost: {{ money(cost_total) }}</span>
+        {% if goal.due_date %}<span>Due {{ goal.due_date }}</span>{% endif %}
+      </div>
     </div>
+
     <div class="card">
-      <h3>Linked Cards</h3>
-      {% for c in cards %}<p class="small"><a class="link" href="/proposals/{{ c.id }}">{{ c.title }}</a> <span class="badge badge-{{ c.status }}">{{ c.status }}</span> <span>{{ money(c.cost_total) }}</span></p>{% endfor %}
+      <h4>Linked Cards</h4>
+      {% for c in cards %}
+      <div class="row small" style="margin-bottom:6px">
+        <a class="link" href="/proposals/{{ c.id }}">{{ c.title }}</a>
+        <span class="badge badge-{{ c.status }}">{{ c.status }}</span>
+        <span class="muted">{{ money(c.cost_total) }}</span>
+      </div>
+      {% endfor %}
       {% if not cards %}<p class="muted small">No linked cards.</p>{% endif %}
     </div>
+
     <div class="card">
-      <h3>Agents</h3>
-      {% for a in agents %}<p class="small"><a class="link" href="/proposals/agents/{{ a.id }}">{{ a.name }}</a> {{ a.role_title }}</p>{% endfor %}
+      <h4>Agents</h4>
+      {% for a in agents %}
+      <div class="row small" style="margin-bottom:4px">
+        <a class="link" href="/proposals/agents/{{ a.id }}">{{ a.name }}</a>
+        <span class="muted">{{ a.role_title }}</span>
+      </div>
+      {% endfor %}
       {% if not agents %}<p class="muted small">No assigned agents through linked cards.</p>{% endif %}
     </div>
+
     <div class="card">
-      <h3>Workflow Runs</h3>
-      {% for run in workflow_runs %}<p class="small"><a class="link" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a> <span class="badge badge-{{ run.status }}">{{ run.status }}</span></p>{% endfor %}
+      <h4>Workflow Runs</h4>
+      {% for run in workflow_runs %}
+      <div class="row small" style="margin-bottom:4px">
+        <a class="link" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a>
+        <span class="badge badge-{{ run.status }}">{{ run.status }}</span>
+      </div>
+      {% endfor %}
       {% if not workflow_runs %}<p class="muted small">No workflow runs.</p>{% endif %}
     </div>
-    <div class="card"><h3>Timeline</h3><div class="timeline">{% for e in events %}<div class="timeline-item"><div class="small"><strong>{{ e.event_type }}</strong></div><div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div></div>{% endfor %}</div></div>
+
+    <div class="card">
+      <h4>Timeline</h4>
+      <div class="timeline">
+        {% for e in events %}
+        <div class="timeline-item">
+          <div class="small"><strong>{{ e.event_type }}</strong></div>
+          <div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div>
+        </div>
+        {% endfor %}
+        {% if not events %}<p class="muted small">No audit events yet.</p>{% endif %}
+      </div>
+    </div>
   </section>
-  <aside class="card">
-    <h3>Edit Goal</h3>
-    <form action="/api/proposals/goals/{{ goal.id }}" method="post">
-      <div class="field"><label>Title</label><input name="title" value="{{ goal.title }}" required></div>
-      <div class="field"><label>Desired Outcome</label><textarea name="desired_outcome">{{ goal.desired_outcome }}</textarea></div>
-      <div class="field"><label>Success Metric</label><input name="success_metric" value="{{ goal.success_metric }}"></div>
-      <div class="field"><label>Priority</label><select name="priority">{% for p in GOAL_PRIORITIES %}<option value="{{ p }}" {% if goal.priority == p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
-      <div class="field"><label>Status</label><select name="status">{% for s in GOAL_STATUSES %}<option value="{{ s }}" {% if goal.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
-      <div class="field"><label>Owner Type</label><input name="owner_type" value="{{ goal.owner_type }}"></div>
-      <div class="field"><label>Owner</label><input name="owner_id" value="{{ goal.owner_id }}"></div>
-      <div class="field"><label>Due Date</label><input name="due_date" type="date" value="{{ goal.due_date or '' }}"></div>
-      <button class="btn btn-primary">Save</button>
-    </form>
+
+  <aside>
+    <div class="inspector">
+      <div class="inspector-block">
+        <h3>Edit Goal</h3>
+        <form action="/api/proposals/goals/{{ goal.id }}" method="post">
+          <div class="field"><label>Title</label><input name="title" value="{{ goal.title }}" required></div>
+          <div class="field"><label>Desired Outcome</label><textarea name="desired_outcome">{{ goal.desired_outcome }}</textarea></div>
+          <div class="field"><label>Success Metric</label><input name="success_metric" value="{{ goal.success_metric }}"></div>
+          <div class="form-grid">
+            <div class="field"><label>Priority</label><select name="priority">{% for p in GOAL_PRIORITIES %}<option value="{{ p }}" {% if goal.priority == p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Status</label><select name="status">{% for s in GOAL_STATUSES %}<option value="{{ s }}" {% if goal.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Owner Type</label><input name="owner_type" value="{{ goal.owner_type }}"></div>
+            <div class="field"><label>Owner</label><input name="owner_id" value="{{ goal.owner_id }}"></div>
+          </div>
+          <div class="field"><label>Due Date</label><input name="due_date" type="date" value="{{ goal.due_date or '' }}"></div>
+          <button class="btn btn-primary">Save Goal</button>
+        </form>
+      </div>
+    </div>
   </aside>
 </div>
 {% endblock %}

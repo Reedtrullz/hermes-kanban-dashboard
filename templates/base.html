@@ -6,71 +6,206 @@
   <title>{% block title %}Hermes{% endblock %}</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <style>
-    :root { --bg:#0d1117; --surface:#161b22; --surface2:#0f1620; --border:#30363d; --text:#c9d1d9; --muted:#8b949e; --accent:#58a6ff; --green:#3fb950; --yellow:#d2991d; --red:#f85149; --purple:#a371f7; }
+    :root { --bg:#050608; --bg2:#090b0f; --surface:#0d1015; --surface2:#131720; --border:#1f232a; --border2:#282e37; --text:#c9d1d9; --muted:#686f7b; --accent:#58a6ff; --green:#3fb950; --yellow:#d2991d; --red:#f85149; --purple:#a371f7; }
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-    header { background:var(--surface); border-bottom:1px solid var(--border); padding:10px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; position:sticky; top:0; z-index:10; }
-    header h1 { font-size:16px; font-weight:650; }
-    nav { display:flex; gap:6px; flex-wrap:wrap; }
-    nav a, .link { color:var(--muted); text-decoration:none; font-size:12px; padding:5px 8px; border-radius:5px; }
-    nav a:hover, .link:hover { color:var(--text); background:var(--border); }
-    main { max-width:1120px; margin:0 auto; padding:24px 16px 56px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
-    .two-col { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:16px; align-items:start; }
-    @media (max-width:900px){ .two-col { grid-template-columns:1fr; } }
+
+    /* ─── Shell ─── */
+    .app-shell { display:grid; grid-template-columns:220px minmax(0,1fr); min-height:100vh; }
+    .app-sidebar { background:var(--bg2); border-right:1px solid var(--border); padding:0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow:auto; }
+    .app-logo { padding:18px 20px 14px; border-bottom:1px solid var(--border); }
+    .app-logo h1 { font-size:15px; font-weight:750; letter-spacing:-.02em; }
+    .app-logo span { color:var(--muted); font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; display:block; margin-top:2px; }
+
+    .nav-section { padding:14px 12px 6px; }
+    .nav-label { color:var(--muted); font-size:10px; letter-spacing:.13em; text-transform:uppercase; font-weight:750; padding:0 8px; margin-bottom:6px; }
+    .nav-list { display:grid; gap:2px; }
+    .nav-item { color:var(--text); text-decoration:none; display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:6px; font-size:13px; font-weight:500; border:1px solid transparent; }
+    .nav-item:hover { background:var(--surface); border-color:var(--border); }
+    .nav-item.is-active { background:#14233b; border-color:#1e3a5f; color:white; }
+    .nav-icon { width:18px; text-align:center; font-size:14px; opacity:.7; }
+    .nav-item.is-active .nav-icon { opacity:1; }
+    .nav-count { margin-left:auto; font-size:10px; color:var(--muted); background:var(--surface); padding:2px 6px; border-radius:8px; }
+
+    .nav-footer { margin-top:auto; padding:12px; border-top:1px solid var(--border); }
+
+    .app-main { min-width:0; overflow:auto; }
+    .app-header { background:var(--bg2); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; position:sticky; top:0; z-index:10; }
+    .app-header h2 { font-size:16px; font-weight:650; }
+    .app-header .breadcrumb { display:flex; align-items:center; gap:6px; }
+    .app-header .breadcrumb a { color:var(--muted); text-decoration:none; font-size:13px; }
+    .app-header .breadcrumb a:hover { color:var(--text); }
+    .app-header .breadcrumb span { color:var(--muted); font-size:11px; }
+
+    .app-body { padding:24px; }
+
+    /* ─── Content layouts ─── */
+    .panel-layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:20px; align-items:start; }
+    .panel-wide { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; }
+    @media (max-width:960px){ .panel-layout { grid-template-columns:1fr; } }
+
+    .list-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+
+    /* ─── Cards ─── */
     .card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:12px; }
     .card h2, .card h3 { font-size:15px; margin-bottom:8px; }
-    .card h4 { font-size:12px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; letter-spacing:.04em; }
+    .card h4 { font-size:10px; color:var(--muted); text-transform:uppercase; margin-bottom:8px; letter-spacing:.13em; font-weight:750; }
+    .card-flush { background:var(--bg); border-color:var(--border); }
+    .card-accent { border-left:3px solid var(--accent); }
+    .card-inset { background:var(--bg); }
+
+    /* ─── Typography ─── */
     .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .split { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
     .muted { color:var(--muted); }
     .small { font-size:12px; }
     .tiny { font-size:11px; }
     .body { white-space:pre-wrap; font-size:14px; line-height:1.55; }
+    .section-label { color:var(--muted); font-size:10px; letter-spacing:.13em; text-transform:uppercase; font-weight:750; margin:22px 0 9px; }
+    .section-label:first-child { margin-top:0; }
+
+    /* ─── Badges ─── */
     .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:650; white-space:nowrap; background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
     .badge-processing { background:#1a2332; color:var(--accent); animation:pulse 1.5s infinite; }
     .badge-review, .badge-medium { background:#2e2416; color:var(--yellow); }
     .badge-approved, .badge-active, .badge-low, .badge-completed { background:#1a2e1a; color:var(--green); }
     .badge-implemented, .badge-paused, .badge-running { background:#1a1a2e; color:var(--purple); }
-    .badge-rejected, .badge-disabled, .badge-high, .badge-critical, .badge-failed { background:#3d1e1e; color:var(--red); }
+    .badge-rejected, .badge-disabled, .badge-high, .badge-critical, .badge-failed, .badge-blocked { background:#3d1e1e; color:var(--red); }
+    .badge-planned, .badge-pending { background:var(--surface2); color:var(--muted); }
+    .badge-done { background:#1a2e1a; color:var(--green); }
+    .badge-dropped { background:#3d1e1e; color:var(--red); }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
-    .btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:30px; padding:6px 12px; border-radius:5px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12px; cursor:pointer; text-decoration:none; }
+
+    /* ─── Buttons ─── */
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:30px; padding:6px 12px; border-radius:5px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12px; cursor:pointer; text-decoration:none; font-weight:500; }
     .btn:hover { background:var(--border); }
     .btn-primary { background:#1f6feb; border-color:#1f6feb; color:white; }
+    .btn-primary:hover { background:#388bfd; }
     .btn-danger { background:#3d1e1e; border-color:var(--red); color:var(--red); }
+    .btn-sm { min-height:26px; padding:4px 8px; font-size:11px; }
+    .icon-btn { width:32px; min-height:32px; padding:0; border-radius:6px; font-weight:800; }
+
+    /* ─── Forms ─── */
     .field { margin-bottom:10px; }
-    .field label { display:block; font-size:10px; color:var(--muted); margin-bottom:3px; text-transform:uppercase; }
-    .field input, .field textarea, .field select { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:7px 10px; color:var(--text); font-size:13px; font-family:inherit; }
+    .field label { display:block; font-size:10px; color:var(--muted); margin-bottom:3px; text-transform:uppercase; letter-spacing:.08em; font-weight:650; }
+    .field input, .field textarea, .field select { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:7px 10px; color:var(--text); font-size:13px; font-family:inherit; }
     .field textarea { min-height:84px; resize:vertical; }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color:var(--accent); outline:none; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .form-grid .wide { grid-column:1 / -1; }
+
+    .quick-form { border:1px solid var(--border); border-radius:8px; background:var(--surface); padding:14px; display:grid; gap:10px; }
+    .quick-form input, .quick-form textarea, .quick-form select { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:7px 10px; color:var(--text); font-size:12px; font-family:inherit; }
+
+    /* ─── Tables ─── */
     .table { width:100%; border-collapse:collapse; }
     .table th, .table td { border-bottom:1px solid var(--border); padding:8px; text-align:left; font-size:12px; vertical-align:top; }
-    .table th { color:var(--muted); font-size:10px; text-transform:uppercase; }
+    .table th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+
+    /* ─── Timeline ─── */
     .timeline { border-left:2px solid var(--border); margin-left:8px; padding-left:14px; }
     .timeline-item { margin-bottom:12px; position:relative; }
     .timeline-item:before { content:""; position:absolute; left:-20px; top:4px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+
+    /* ─── Misc ─── */
     .empty { text-align:center; color:var(--muted); padding:40px 20px; }
     .meter { height:8px; background:var(--bg); border:1px solid var(--border); border-radius:99px; overflow:hidden; margin-top:6px; }
     .meter span { display:block; height:100%; background:var(--accent); min-width:2px; max-width:100%; }
     .warn { color:var(--yellow); }
+    .dot { width:9px; height:9px; border-radius:50%; background:var(--accent); flex:0 0 auto; }
+    .dot-active { background:var(--green); }
+    .dot-paused { background:var(--purple); }
+    .dot-disabled { background:var(--red); }
+    .link { color:var(--accent); text-decoration:none; font-size:13px; }
+    .link:hover { text-decoration:underline; }
+
+    /* ─── Side list (reusable from setup) ─── */
+    .side-list { display:grid; gap:4px; }
+    .side-row { color:var(--text); text-decoration:none; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:6px; border:1px solid transparent; font-size:13px; }
+    .side-row:hover { background:var(--surface); border-color:var(--border); }
+    .side-row.is-active { background:#15181d; border-color:var(--border2); }
+    .side-row-main { display:flex; align-items:center; gap:9px; min-width:0; }
+    .side-row-text { min-width:0; }
+    .side-row-text strong { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .side-row-text span { display:block; color:var(--muted); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* ─── Inspector panel ─── */
+    .inspector { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:18px; }
+    .inspector-block { border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:16px; }
+    .inspector-block:last-child { border-bottom:0; margin-bottom:0; padding-bottom:0; }
+    .inspector-block h3 { font-size:15px; margin-bottom:10px; }
+
+    /* ─── Responsive ─── */
+    @media (max-width:760px) {
+      .app-shell { grid-template-columns:1fr; }
+      .app-sidebar { position:static; height:auto; flex-direction:row; overflow-x:auto; border-right:0; border-bottom:1px solid var(--border); }
+      .app-sidebar .nav-section { padding:8px 4px; }
+      .app-sidebar .nav-list { grid-auto-flow:column; gap:4px; }
+      .app-sidebar .nav-label, .app-sidebar .nav-footer { display:none; }
+      .app-logo span { display:none; }
+    }
   </style>
   {% block head %}{% endblock %}
 </head>
 <body>
-<header>
-  <h1>Hermes Ops</h1>
-  <nav>
-    <a href="/proposals">Cards</a>
-    <a href="/proposals/setup">Setup</a>
-    <a href="/proposals/goals">Goals</a>
-    <a href="/proposals/agents">Agents</a>
-    <a href="/proposals/workflows">Workflows</a>
-    <a href="/proposals/approvals">Approvals</a>
-    <a href="/proposals/budgets">Budgets</a>
-  </nav>
-</header>
-<main>
-  {% block content %}{% endblock %}
-</main>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <div class="app-logo">
+      <h1>Hermes</h1>
+      <span>Agent Operations</span>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-list">
+        <a class="nav-item {% block nav_cards %}{% endblock %}" href="/proposals">
+          <span class="nav-icon">⊞</span> Cards
+        </a>
+        <a class="nav-item {% block nav_goals %}{% endblock %}" href="/proposals/goals">
+          <span class="nav-icon">◎</span> Goals
+        </a>
+        <a class="nav-item {% block nav_workflows %}{% endblock %}" href="/proposals/workflows">
+          <span class="nav-icon">⇶</span> Workflows
+        </a>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Governance</div>
+      <div class="nav-list">
+        <a class="nav-item {% block nav_approvals %}{% endblock %}" href="/proposals/approvals">
+          <span class="nav-icon">✓</span> Approvals
+        </a>
+        <a class="nav-item {% block nav_budgets %}{% endblock %}" href="/proposals/budgets">
+          <span class="nav-icon">$</span> Budgets
+        </a>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Configure</div>
+      <div class="nav-list">
+        <a class="nav-item {% block nav_agents %}{% endblock %}" href="/proposals/agents">
+          <span class="nav-icon">◈</span> Agents
+        </a>
+        <a class="nav-item {% block nav_setup %}{% endblock %}" href="/proposals/setup">
+          <span class="nav-icon">⚙</span> Setup
+        </a>
+      </div>
+    </div>
+    {% block sidebar_extra %}{% endblock %}
+  </aside>
+
+  <div class="app-main">
+    {% block header %}
+    <div class="app-header">
+      <h2>{% block page_title %}{% endblock %}</h2>
+      {% block header_actions %}{% endblock %}
+    </div>
+    {% endblock %}
+    <div class="app-body">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
 <script>
 function reltime(ts){const d=(Date.now()/1000)-ts;if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago';}
 function md(s){return s.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\n- (.+)/g,'\n<span style="display:block;margin-left:12px;margin-top:2px">- $1</span>');}

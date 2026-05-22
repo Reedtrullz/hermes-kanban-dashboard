@@ -1,32 +1,60 @@
 {% extends "base.html" %}
 {% block title %}{{ agent.name }} - Hermes{% endblock %}
+{% block nav_agents %}is-active{% endblock %}
+{% block header %}
+<div class="app-header">
+  <div class="breadcrumb">
+    <a href="/proposals/agents">Agents</a>
+    <span>›</span>
+    <a href="/proposals/agents/{{ agent.id }}" style="color:var(--text)">{{ agent.name }}</a>
+  </div>
+</div>
+{% endblock %}
 {% block content %}
-<a class="link" href="/proposals/agents">Back to agents</a>
-<div class="two-col">
+<div class="panel-layout">
   <section>
     <div class="card">
       <div class="split">
-        <div><h2>{{ agent.name }}</h2><p class="muted small">{{ agent.role_title }}</p></div>
+        <div>
+          <h2 style="font-size:20px;margin-bottom:4px">{{ agent.name }}</h2>
+          <p class="muted small">{{ agent.role_title }}</p>
+        </div>
         <span class="badge badge-{{ agent.status }}">{{ agent.status }}</span>
       </div>
-      <p class="body" style="margin-top:12px">{{ agent.purpose }}</p>
+      {% if agent.purpose %}<p class="body" style="margin-top:12px">{{ agent.purpose }}</p>{% endif %}
       <p class="small muted" style="margin-top:8px">{{ agent.provider }} / {{ agent.model_name }}</p>
-      <div class="small" style="margin-top:8px">This month: {{ money(agent.monthly_actual_spend_usd) }} / {{ money(agent.monthly_budget_usd) }}</div>
+      <div class="small" style="margin-top:10px">This month: {{ money(agent.monthly_actual_spend_usd) }} / {{ money(agent.monthly_budget_usd) }}</div>
       <div class="meter"><span style="width:{% if agent.monthly_budget_usd %}{{ [100, (agent.monthly_actual_spend_usd / agent.monthly_budget_usd * 100)|round(0)]|min }}{% else %}0{% endif %}%"></span></div>
-      <div class="small muted" style="margin-top:8px">Actual all-time: {{ money(agent.actual_spend_usd) }} / Estimated: {{ money(agent.estimated_spend_usd) }}</div>
+      <div class="small muted" style="margin-top:6px">All-time: {{ money(agent.actual_spend_usd) }} actual / {{ money(agent.estimated_spend_usd) }} estimated</div>
     </div>
+
     <div class="card">
-      <h3>Assigned Cards</h3>
-      {% for c in cards %}<p class="small"><a class="link" href="/proposals/{{ c.id }}">{{ c.title }}</a> <span class="badge badge-{{ c.status }}">{{ c.status }}</span> <span class="badge badge-{{ c.risk_level }}">{{ c.risk_level }}</span></p>{% endfor %}
+      <h4>Assigned Cards</h4>
+      {% for c in cards %}
+      <div class="row small" style="margin-bottom:6px">
+        <a class="link" href="/proposals/{{ c.id }}">{{ c.title }}</a>
+        <span class="badge badge-{{ c.status }}">{{ c.status }}</span>
+        <span class="badge badge-{{ c.risk_level }}">{{ c.risk_level }}</span>
+      </div>
+      {% endfor %}
       {% if not cards %}<p class="muted small">No assigned cards.</p>{% endif %}
     </div>
+
     <div class="card">
-      <h3>Handoffs</h3>
-      {% for h in handoffs %}<p class="small">{{ h.from_agent or "Human" }} -> {{ h.to_agent or "Unassigned" }} <span class="badge">{{ h.status }}</span> {{ h.reason }}</p>{% endfor %}
+      <h4>Handoffs</h4>
+      {% for h in handoffs %}
+      <div class="row small" style="margin-bottom:4px">
+        <span>{{ h.from_agent or "Human" }} → {{ h.to_agent or "Unassigned" }}</span>
+        <span class="badge">{{ h.status }}</span>
+        <span class="muted">{{ h.reason }}</span>
+      </div>
+      {% endfor %}
       {% if not handoffs %}<p class="muted small">No handoffs.</p>{% endif %}
     </div>
+
     <div class="card">
-      <h3>Actual Cost Records</h3>
+      <h4>Cost Records</h4>
+      {% if usage %}
       <table class="table">
         <tr><th>When</th><th>Provider</th><th>Tokens</th><th>Actual</th><th>Estimated</th><th>Note</th></tr>
         {% for u in usage %}
@@ -36,46 +64,73 @@
           <td>{{ u.input_tokens }} in / {{ u.output_tokens }} out{% if u.cached_tokens %} / {{ u.cached_tokens }} cached{% endif %}</td>
           <td>{{ money(u.actual_cost_usd) }}</td>
           <td>{{ money(u.estimated_cost_usd) }}</td>
-          <td>{{ u.manual_note }}</td>
+          <td class="muted">{{ u.manual_note }}</td>
         </tr>
         {% endfor %}
       </table>
-      {% if not usage %}<p class="muted small">No actual cost records yet.</p>{% endif %}
+      {% else %}<p class="muted small">No cost records yet.</p>{% endif %}
     </div>
+
     <div class="card">
-      <h3>Timeline</h3>
-      <div class="timeline">{% for e in events %}<div class="timeline-item"><div class="small"><strong>{{ e.event_type }}</strong></div><div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div></div>{% endfor %}</div>
+      <h4>Timeline</h4>
+      <div class="timeline">
+        {% for e in events %}
+        <div class="timeline-item">
+          <div class="small"><strong>{{ e.event_type }}</strong></div>
+          <div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div>
+        </div>
+        {% endfor %}
+        {% if not events %}<p class="muted small">No audit events yet.</p>{% endif %}
+      </div>
     </div>
   </section>
-  <aside class="card">
-    <h3>Edit Agent</h3>
-    <form action="/api/proposals/agents/{{ agent.id }}" method="post">
-      <div class="field"><label>Name</label><input name="name" value="{{ agent.name }}" required></div>
-      <div class="field"><label>Role Title</label><input name="role_title" value="{{ agent.role_title }}" required></div>
-      <div class="field"><label>Purpose</label><textarea name="purpose">{{ agent.purpose }}</textarea></div>
-      <div class="field"><label>System Prompt</label><textarea name="system_prompt">{{ agent.system_prompt }}</textarea></div>
-      <div class="field"><label>Provider</label><input name="provider" value="{{ agent.provider }}"></div>
-      <div class="field"><label>Model</label><input name="model_name" value="{{ agent.model_name }}"></div>
-      <div class="field"><label>Allowed Tools</label><textarea name="tools_allowed">{{ agent.tools|join('\n') }}</textarea></div>
-      <div class="field"><label>Monthly Budget USD</label><input name="monthly_budget_usd" type="number" step="0.01" value="{{ agent.monthly_budget_usd }}"></div>
-      <button class="btn btn-primary">Save</button>
-    </form>
-    <div class="card" style="background:var(--bg);margin-top:12px">
-      <h3>Record Actual Cost</h3>
-      <form action="/api/proposals/usage" method="post">
-        <input type="hidden" name="scope_type" value="agent">
-        <input type="hidden" name="scope_id" value="{{ agent.id }}">
-        <div class="field"><label>Provider</label><input name="provider" value="{{ agent.provider }}"></div>
-        <div class="field"><label>Model</label><input name="model" value="{{ agent.model_name }}"></div>
-        <div class="field"><label>Input Tokens</label><input name="input_tokens" type="number" value="0"></div>
-        <div class="field"><label>Output Tokens</label><input name="output_tokens" type="number" value="0"></div>
-        <div class="field"><label>Cached Tokens</label><input name="cached_tokens" type="number" value="0"></div>
-        <div class="field"><label>Tool Calls</label><input name="tool_call_count" type="number" value="0"></div>
-        <div class="field"><label>Actual Cost USD</label><input name="actual_cost_usd" type="number" step="0.0001" value="0" required></div>
-        <div class="field"><label>Estimated Cost USD</label><input name="estimated_cost_usd" type="number" step="0.0001" value="0"></div>
-        <div class="field"><label>Note</label><textarea name="manual_note" placeholder="Invoice line, provider usage page, run id, or reason"></textarea></div>
-        <button class="btn btn-primary">Record Cost</button>
-      </form>
+
+  <aside>
+    <div class="inspector">
+      <div class="inspector-block">
+        <h3>Edit Agent</h3>
+        <form action="/api/proposals/agents/{{ agent.id }}" method="post">
+          <div class="form-grid">
+            <div class="field"><label>Name</label><input name="name" value="{{ agent.name }}" required></div>
+            <div class="field"><label>Role Title</label><input name="role_title" value="{{ agent.role_title }}" required></div>
+          </div>
+          <div class="field"><label>Purpose</label><textarea name="purpose">{{ agent.purpose }}</textarea></div>
+          <div class="field"><label>System Prompt</label><textarea name="system_prompt">{{ agent.system_prompt }}</textarea></div>
+          <div class="form-grid">
+            <div class="field"><label>Provider</label><input name="provider" value="{{ agent.provider }}"></div>
+            <div class="field"><label>Model</label><input name="model_name" value="{{ agent.model_name }}"></div>
+          </div>
+          <div class="field"><label>Allowed Tools</label><textarea name="tools_allowed">{{ agent.tools|join('\n') }}</textarea></div>
+          <div class="field"><label>Monthly Budget USD</label><input name="monthly_budget_usd" type="number" step="0.01" value="{{ agent.monthly_budget_usd }}"></div>
+          <button class="btn btn-primary">Save Agent</button>
+        </form>
+      </div>
+
+      <div class="inspector-block">
+        <h3>Record Cost</h3>
+        <form action="/api/proposals/usage" method="post">
+          <input type="hidden" name="scope_type" value="agent">
+          <input type="hidden" name="scope_id" value="{{ agent.id }}">
+          <div class="form-grid">
+            <div class="field"><label>Provider</label><input name="provider" value="{{ agent.provider }}"></div>
+            <div class="field"><label>Model</label><input name="model" value="{{ agent.model_name }}"></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Input Tokens</label><input name="input_tokens" type="number" value="0"></div>
+            <div class="field"><label>Output Tokens</label><input name="output_tokens" type="number" value="0"></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Cached Tokens</label><input name="cached_tokens" type="number" value="0"></div>
+            <div class="field"><label>Tool Calls</label><input name="tool_call_count" type="number" value="0"></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Actual Cost</label><input name="actual_cost_usd" type="number" step="0.0001" value="0" required></div>
+            <div class="field"><label>Estimated Cost</label><input name="estimated_cost_usd" type="number" step="0.0001" value="0"></div>
+          </div>
+          <div class="field"><label>Note</label><textarea name="manual_note" placeholder="Invoice line, provider usage page, run id, or reason" style="min-height:60px"></textarea></div>
+          <button class="btn">Record Cost</button>
+        </form>
+      </div>
     </div>
   </aside>
 </div>

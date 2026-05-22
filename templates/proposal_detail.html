@@ -1,7 +1,16 @@
 {% extends "base.html" %}
 {% block title %}{{ proposal.title }} - Hermes{% endblock %}
+{% block nav_cards %}is-active{% endblock %}
+{% block header %}
+<div class="app-header">
+  <div class="breadcrumb">
+    <a href="/proposals">Cards</a>
+    <span>›</span>
+    <a href="/proposals/{{ proposal.id }}" style="color:var(--text)">{{ proposal.title }}</a>
+  </div>
+</div>
+{% endblock %}
 {% block content %}
-<a class="link" href="/proposals">Back to cards</a>
 <div id="proposal-content" hx-get="/api/proposals/{{ proposal.id }}/fragment" hx-trigger="every 5s" hx-swap="outerHTML">
   {% include "_proposal_detail_fragment.html" %}
 </div>
