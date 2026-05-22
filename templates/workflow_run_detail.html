@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Workflow Run - Hermes{% endblock %}
 {% block content %}
-<a class="link" href="/workflows">Back to workflows</a>
+<a class="link" href="/proposals/workflows">Back to workflows</a>
 <div class="two-col">
   <section>
     <div class="card">
@@ -9,7 +9,7 @@
       <p class="small" style="margin-top:10px">{% if run.proposal_title %}Card: {{ run.proposal_title }}{% endif %}{% if run.goal_title %} Goal: {{ run.goal_title }}{% endif %}</p>
       <div class="row" style="margin-top:10px">
         {% for status in WORKFLOW_RUN_STATUSES %}
-        <form action="/api/workflows/runs/{{ run.id }}/status" method="post"><input type="hidden" name="status" value="{{ status }}"><button class="btn {% if run.status == status %}btn-primary{% endif %}">{{ status }}</button></form>
+        <form action="/api/proposals/workflows/runs/{{ run.id }}/status" method="post"><input type="hidden" name="status" value="{{ status }}"><button class="btn {% if run.status == status %}btn-primary{% endif %}">{{ status }}</button></form>
         {% endfor %}
       </div>
     </div>
@@ -22,7 +22,7 @@
           <td>{{ stage.position }}. {{ stage.name }}{% if stage.notes %}<div class="muted tiny">{{ stage.notes }}</div>{% endif %}</td>
           <td><span class="badge badge-{{ stage.status }}">{{ stage.status }}</span></td>
           <td>
-            <form action="/api/workflows/runs/{{ run.id }}/stages/{{ stage.id }}" method="post" class="row">
+            <form action="/api/proposals/workflows/runs/{{ run.id }}/stages/{{ stage.id }}" method="post" class="row">
               <select name="status"><option>pending</option><option {% if stage.status == 'current' %}selected{% endif %}>current</option><option>completed</option><option>failed</option><option>skipped</option></select>
               <input name="notes" placeholder="notes" value="{{ stage.notes }}" style="min-width:120px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px;color:var(--text)">
               <button class="btn">Save</button>
@@ -48,7 +48,7 @@
   <aside>
     <div class="card">
       <h3>Create Handoff</h3>
-      <form action="/api/workflows/runs/{{ run.id }}/handoffs" method="post">
+      <form action="/api/proposals/workflows/runs/{{ run.id }}/handoffs" method="post">
         <div class="field"><label>From Agent</label><select name="from_agent_id"><option value="">Human</option>{% for a in agents %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
         <div class="field"><label>To Agent</label><select name="to_agent_id"><option value="">Unassigned</option>{% for a in agents %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}</select></div>
         <div class="field"><label>Reason</label><input name="reason"></div>

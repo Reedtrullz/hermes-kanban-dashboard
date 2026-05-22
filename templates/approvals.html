@@ -15,8 +15,8 @@
       </div>
       {% if a.status == 'pending' %}
       <div class="row">
-        <form action="/api/approvals/{{ a.id }}/decision" method="post"><input type="hidden" name="status" value="approved"><input type="hidden" name="decision_reason" value="Approved from inbox"><button class="btn btn-primary">Approve</button></form>
-        <form action="/api/approvals/{{ a.id }}/decision" method="post"><input type="hidden" name="status" value="rejected"><input type="hidden" name="decision_reason" value="Rejected from inbox"><button class="btn btn-danger">Reject</button></form>
+        <form action="/api/proposals/approvals/{{ a.id }}/decision" method="post"><input type="hidden" name="status" value="approved"><input type="hidden" name="decision_reason" value="Approved from inbox"><button class="btn btn-primary">Approve</button></form>
+        <form action="/api/proposals/approvals/{{ a.id }}/decision" method="post"><input type="hidden" name="status" value="rejected"><input type="hidden" name="decision_reason" value="Rejected from inbox"><button class="btn btn-danger">Reject</button></form>
       </div>
       {% endif %}
     </div>

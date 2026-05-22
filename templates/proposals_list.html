@@ -24,9 +24,9 @@
               {% if p.top_comments %}<span>{{ p.top_comments }} review{% if p.top_comments != 1 %}s{% endif %}</span>{% endif %}
             </div>
             <div class="small muted" style="margin-top:8px">
-              {% if p.goal %}Goal: <a class="link" href="/goals/{{ p.goal.id }}">{{ p.goal.title }}</a>{% else %}No goal linked{% endif %}
+              {% if p.goal %}Goal: <a class="link" href="/proposals/goals/{{ p.goal.id }}">{{ p.goal.title }}</a>{% else %}No goal linked{% endif %}
               {% if p.parent %} / Parent: <a class="link" href="/proposals/{{ p.parent.id }}">{{ p.parent.title }}</a>{% endif %}
-              {% if p.agent %} / Agent: <a class="link" href="/agents/{{ p.agent.id }}">{{ p.agent.name }}</a>{% endif %}
+              {% if p.agent %} / Agent: <a class="link" href="/proposals/agents/{{ p.agent.id }}">{{ p.agent.name }}</a>{% endif %}
             </div>
           </div>
           <div class="badge">{{ money(p.cost_total) }}</div>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ agent.name }} - Hermes{% endblock %}
 {% block content %}
-<a class="link" href="/agents">Back to agents</a>
+<a class="link" href="/proposals/agents">Back to agents</a>
 <div class="two-col">
   <section>
     <div class="card">
@@ -30,7 +30,7 @@
   </section>
   <aside class="card">
     <h3>Edit Agent</h3>
-    <form action="/api/agents/{{ agent.id }}" method="post">
+    <form action="/api/proposals/agents/{{ agent.id }}" method="post">
       <div class="field"><label>Name</label><input name="name" value="{{ agent.name }}" required></div>
       <div class="field"><label>Role Title</label><input name="role_title" value="{{ agent.role_title }}" required></div>
       <div class="field"><label>Purpose</label><textarea name="purpose">{{ agent.purpose }}</textarea></div>

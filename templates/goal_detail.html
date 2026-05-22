@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ goal.title }} - Hermes{% endblock %}
 {% block content %}
-<a class="link" href="/goals">Back to goals</a>
+<a class="link" href="/proposals/goals">Back to goals</a>
 <div class="two-col">
   <section>
     <div class="card">
@@ -17,19 +17,19 @@
     </div>
     <div class="card">
       <h3>Agents</h3>
-      {% for a in agents %}<p class="small"><a class="link" href="/agents/{{ a.id }}">{{ a.name }}</a> {{ a.role_title }}</p>{% endfor %}
+      {% for a in agents %}<p class="small"><a class="link" href="/proposals/agents/{{ a.id }}">{{ a.name }}</a> {{ a.role_title }}</p>{% endfor %}
       {% if not agents %}<p class="muted small">No assigned agents through linked cards.</p>{% endif %}
     </div>
     <div class="card">
       <h3>Workflow Runs</h3>
-      {% for run in workflow_runs %}<p class="small"><a class="link" href="/workflows/runs/{{ run.id }}">{{ run.template_name }}</a> <span class="badge badge-{{ run.status }}">{{ run.status }}</span></p>{% endfor %}
+      {% for run in workflow_runs %}<p class="small"><a class="link" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a> <span class="badge badge-{{ run.status }}">{{ run.status }}</span></p>{% endfor %}
       {% if not workflow_runs %}<p class="muted small">No workflow runs.</p>{% endif %}
     </div>
     <div class="card"><h3>Timeline</h3><div class="timeline">{% for e in events %}<div class="timeline-item"><div class="small"><strong>{{ e.event_type }}</strong></div><div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div></div>{% endfor %}</div></div>
   </section>
   <aside class="card">
     <h3>Edit Goal</h3>
-    <form action="/api/goals/{{ goal.id }}" method="post">
+    <form action="/api/proposals/goals/{{ goal.id }}" method="post">
       <div class="field"><label>Title</label><input name="title" value="{{ goal.title }}" required></div>
       <div class="field"><label>Desired Outcome</label><textarea name="desired_outcome">{{ goal.desired_outcome }}</textarea></div>
       <div class="field"><label>Success Metric</label><input name="success_metric" value="{{ goal.success_metric }}"></div>

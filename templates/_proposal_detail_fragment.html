@@ -14,9 +14,9 @@
               <span>{{ money(proposal.cost_total) }}</span>
             </div>
             <div class="small muted" style="margin-top:8px">
-              {% if proposal.goal %}Goal: <a class="link" href="/goals/{{ proposal.goal.id }}">{{ proposal.goal.title }}</a>{% else %}No goal linked{% endif %}
+              {% if proposal.goal %}Goal: <a class="link" href="/proposals/goals/{{ proposal.goal.id }}">{{ proposal.goal.title }}</a>{% else %}No goal linked{% endif %}
               {% if proposal.parent %} / Parent: <a class="link" href="/proposals/{{ proposal.parent.id }}">{{ proposal.parent.title }}</a>{% endif %}
-              {% if proposal.agent %} / Agent: <a class="link" href="/agents/{{ proposal.agent.id }}">{{ proposal.agent.name }}</a>{% endif %}
+              {% if proposal.agent %} / Agent: <a class="link" href="/proposals/agents/{{ proposal.agent.id }}">{{ proposal.agent.name }}</a>{% endif %}
             </div>
           </div>
         </div>
@@ -105,7 +105,7 @@
       <div class="card">
         <h3>Workflow Runs</h3>
         {% for run in workflow_runs %}
-        <p class="small"><a class="link" href="/workflows/runs/{{ run.id }}">{{ run.template_name }}</a> <span class="badge badge-{{ run.status }}">{{ run.status }}</span></p>
+        <p class="small"><a class="link" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a> <span class="badge badge-{{ run.status }}">{{ run.status }}</span></p>
         {% endfor %}
         {% if not workflow_runs %}<p class="muted small">No workflow runs.</p>{% endif %}
       </div>

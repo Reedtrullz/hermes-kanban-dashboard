@@ -7,7 +7,7 @@
     {% for goal in goals %}
     <article class="card">
       <div class="split">
-        <div><h3><a class="link" style="color:var(--accent);padding:0" href="/goals/{{ goal.id }}">{{ goal.title }}</a></h3><p class="small muted">{{ goal.desired_outcome }}</p></div>
+        <div><h3><a class="link" style="color:var(--accent);padding:0" href="/proposals/goals/{{ goal.id }}">{{ goal.title }}</a></h3><p class="small muted">{{ goal.desired_outcome }}</p></div>
         <div class="row"><span class="badge badge-{{ goal.priority }}">{{ goal.priority }}</span><span class="badge badge-{{ goal.status }}">{{ goal.status }}</span></div>
       </div>
       <div class="row small muted" style="margin-top:10px"><span>{{ goal.cards|length }} cards</span><span>{{ money(goal.cost_total) }}</span>{% if goal.due_date %}<span>Due {{ goal.due_date }}</span>{% endif %}</div>
@@ -17,7 +17,7 @@
   </section>
   <aside class="card">
     <h3>Create Goal</h3>
-    <form action="/api/goals" method="post">
+    <form action="/api/proposals/goals" method="post">
       <div class="field"><label>Title</label><input name="title" required></div>
       <div class="field"><label>Desired Outcome</label><textarea name="desired_outcome"></textarea></div>
       <div class="field"><label>Success Metric</label><input name="success_metric"></div>

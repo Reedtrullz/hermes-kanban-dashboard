@@ -105,6 +105,29 @@ def test_cards_page_renders_cost_helpers(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert "Rendered card" in response.text
     assert "$0.00" in response.text
+    assert 'href="/proposals/goals"' in response.text
+    assert 'href="/proposals/agents"' in response.text
+    assert 'href="/proposals/workflows"' in response.text
+    assert 'href="/proposals/approvals"' in response.text
+    assert 'href="/proposals/budgets"' in response.text
+
+
+def test_prefixed_ops_pages_and_api_routes_work_under_proposals(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+
+    for path in ["/proposals/goals", "/proposals/agents", "/proposals/workflows", "/proposals/approvals", "/proposals/budgets"]:
+        response = client.get(path)
+        assert response.status_code == 200, path
+
+    goal_response = client.post(
+        "/api/proposals/goals",
+        data={"title": "Prefixed goal", "priority": "medium", "status": "active"},
+        follow_redirects=False,
+    )
+
+    assert goal_response.status_code == 303
+    assert goal_response.headers["location"] == "/proposals/goals"
 
 
 def test_agent_crud_pause_resume_and_budget_meter_data(tmp_path, monkeypatch):

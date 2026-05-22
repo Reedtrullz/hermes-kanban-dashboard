@@ -8,7 +8,7 @@
     <article class="card">
       <div class="split">
         <div>
-          <h3><a class="link" style="color:var(--accent);padding:0" href="/workflows/runs/{{ run.id }}">{{ run.template_name }}</a></h3>
+          <h3><a class="link" style="color:var(--accent);padding:0" href="/proposals/workflows/runs/{{ run.id }}">{{ run.template_name }}</a></h3>
           <p class="small muted">{% if run.proposal_title %}Card: {{ run.proposal_title }}{% endif %}{% if run.goal_title %} Goal: {{ run.goal_title }}{% endif %}</p>
         </div>
         <span class="badge badge-{{ run.status }}">{{ run.status }}</span>
@@ -28,7 +28,7 @@
   </section>
   <aside class="card">
     <h3>Start Workflow</h3>
-    <form action="/api/workflows/start" method="post">
+    <form action="/api/proposals/workflows/start" method="post">
       <div class="field"><label>Template</label><select name="template_id">{% for t in templates_list %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select></div>
       <div class="field"><label>Card</label><select name="proposal_id"><option value="">No card</option>{% for p in proposals %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select></div>
       <div class="field"><label>Goal</label><select name="goal_id"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.id }}">{{ g.title }}</option>{% endfor %}</select></div>

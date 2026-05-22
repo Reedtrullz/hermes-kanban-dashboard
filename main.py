@@ -719,6 +719,31 @@ async def proposals_list(request: Request):
         )
 
 
+@app.get("/proposals/goals", response_class=HTMLResponse)
+async def prefixed_goals_page(request: Request):
+    return await goals_page(request)
+
+
+@app.get("/proposals/agents", response_class=HTMLResponse)
+async def prefixed_agents_page(request: Request):
+    return await agents_page(request)
+
+
+@app.get("/proposals/workflows", response_class=HTMLResponse)
+async def prefixed_workflows_page(request: Request):
+    return await workflows_page(request)
+
+
+@app.get("/proposals/approvals", response_class=HTMLResponse)
+async def prefixed_approvals_page(request: Request):
+    return await approvals_page(request)
+
+
+@app.get("/proposals/budgets", response_class=HTMLResponse)
+async def prefixed_budgets_page(request: Request):
+    return await budgets_page(request)
+
+
 @app.get("/proposals/{proposal_id}", response_class=HTMLResponse)
 async def proposal_detail(request: Request, proposal_id: str):
     with db_connect() as db:
@@ -873,6 +898,7 @@ async def agents_page(request: Request):
     return templates.TemplateResponse(request=request, name="agents.html", context=template_context({"agents": agents}))
 
 
+@app.get("/proposals/agents/{agent_id}", response_class=HTMLResponse)
 @app.get("/agents/{agent_id}", response_class=HTMLResponse)
 async def agent_detail(request: Request, agent_id: str):
     with db_connect() as db:
@@ -889,6 +915,7 @@ async def agent_detail(request: Request, agent_id: str):
     return templates.TemplateResponse(request=request, name="agent_detail.html", context=template_context({"agent": agent, "cards": cards, "handoffs": handoffs, "usage": usage, "events": events, "budgets": budgets}))
 
 
+@app.post("/api/proposals/agents")
 @app.post("/api/agents")
 async def create_agent(
     name: str = Form(...),
@@ -928,9 +955,10 @@ async def create_agent(
         )
         create_event(db, "human", "user", "agent", agent_id, "agent_created", {"name": name, "role_title": role_title})
         db.commit()
-    return RedirectResponse("/agents", status_code=303)
+    return RedirectResponse("/proposals/agents", status_code=303)
 
 
+@app.post("/api/proposals/agents/{agent_id}")
 @app.post("/api/agents/{agent_id}")
 async def update_agent(
     agent_id: str,
@@ -957,9 +985,10 @@ async def update_agent(
         )
         create_event(db, "human", "user", "agent", agent_id, "agent_updated", {"name": name, "role_title": role_title})
         db.commit()
-    return RedirectResponse(f"/agents/{agent_id}", status_code=303)
+    return RedirectResponse(f"/proposals/agents/{agent_id}", status_code=303)
 
 
+@app.post("/api/proposals/agents/{agent_id}/status")
 @app.post("/api/agents/{agent_id}/status")
 async def update_agent_status(agent_id: str, status: str = Form(...)):
     if status not in AGENT_STATUSES:
@@ -969,7 +998,7 @@ async def update_agent_status(agent_id: str, status: str = Form(...)):
         db.execute("UPDATE agents SET status=?, updated_at=? WHERE id=?", (status, now, agent_id))
         create_event(db, "human", "user", "agent", agent_id, "agent_status_changed", {"status": status})
         db.commit()
-    return RedirectResponse("/agents", status_code=303)
+    return RedirectResponse("/proposals/agents", status_code=303)
 
 
 @app.get("/goals", response_class=HTMLResponse)
@@ -983,6 +1012,7 @@ async def goals_page(request: Request):
     return templates.TemplateResponse(request=request, name="goals.html", context=template_context({"goals": goals}))
 
 
+@app.get("/proposals/goals/{goal_id}", response_class=HTMLResponse)
 @app.get("/goals/{goal_id}", response_class=HTMLResponse)
 async def goal_detail(request: Request, goal_id: str):
     with db_connect() as db:
@@ -998,6 +1028,7 @@ async def goal_detail(request: Request, goal_id: str):
     return templates.TemplateResponse(request=request, name="goal_detail.html", context=template_context({"goal": goal, "cards": cards, "agents": agents, "events": events, "workflow_runs": workflow_runs, "budgets": budgets, "cost_total": cost_total}))
 
 
+@app.post("/api/proposals/goals")
 @app.post("/api/goals")
 async def create_goal(
     title: str = Form(...),
@@ -1024,9 +1055,10 @@ async def create_goal(
         )
         create_event(db, "human", "user", "goal", goal_id, "goal_created", {"title": title})
         db.commit()
-    return RedirectResponse("/goals", status_code=303)
+    return RedirectResponse("/proposals/goals", status_code=303)
 
 
+@app.post("/api/proposals/goals/{goal_id}")
 @app.post("/api/goals/{goal_id}")
 async def update_goal(
     goal_id: str,
@@ -1054,7 +1086,7 @@ async def update_goal(
         )
         create_event(db, "human", "user", "goal", goal_id, "goal_updated", {"title": title, "status": status})
         db.commit()
-    return RedirectResponse(f"/goals/{goal_id}", status_code=303)
+    return RedirectResponse(f"/proposals/goals/{goal_id}", status_code=303)
 
 
 @app.get("/workflows", response_class=HTMLResponse)
@@ -1069,6 +1101,7 @@ async def workflows_page(request: Request):
     return templates.TemplateResponse(request=request, name="workflows.html", context=template_context({"templates_list": templates_list, "runs": runs, "proposals": proposals, "goals": goals}))
 
 
+@app.get("/proposals/workflows/runs/{run_id}", response_class=HTMLResponse)
 @app.get("/workflows/runs/{run_id}", response_class=HTMLResponse)
 async def workflow_run_detail(request: Request, run_id: str):
     with db_connect() as db:
@@ -1083,6 +1116,7 @@ async def workflow_run_detail(request: Request, run_id: str):
     return templates.TemplateResponse(request=request, name="workflow_run_detail.html", context=template_context({"run": run, "stages": stages, "agents": agents, "handoffs": handoffs, "approvals": approvals, "events": events}))
 
 
+@app.post("/api/proposals/workflows/start")
 @app.post("/api/workflows/start")
 async def start_workflow(template_id: str = Form(...), proposal_id: str = Form(""), goal_id: str = Form("")):
     run_id = make_id("run")
@@ -1116,9 +1150,10 @@ async def start_workflow(template_id: str = Form(...), proposal_id: str = Form("
         if goal_id:
             create_event(db, "human", "user", "goal", goal_id, "workflow_started", {"workflow_run_id": run_id})
         db.commit()
-    return RedirectResponse(f"/workflows/runs/{run_id}", status_code=303)
+    return RedirectResponse(f"/proposals/workflows/runs/{run_id}", status_code=303)
 
 
+@app.post("/api/proposals/workflows/runs/{run_id}/stages/{stage_id}")
 @app.post("/api/workflows/runs/{run_id}/stages/{stage_id}")
 async def update_workflow_stage(run_id: str, stage_id: str, status: str = Form(...), notes: str = Form("")):
     if status not in {"pending", "current", "completed", "failed", "skipped"}:
@@ -1139,9 +1174,10 @@ async def update_workflow_stage(run_id: str, stage_id: str, status: str = Form(.
                 db.execute("UPDATE workflow_runs SET current_stage_id=?, updated_at=? WHERE id=?", (next_stage["id"], now, run_id))
         create_event(db, "human", "user", "workflow_run", run_id, "workflow_stage_updated", {"stage_id": stage_id, "status": status})
         db.commit()
-    return RedirectResponse(f"/workflows/runs/{run_id}", status_code=303)
+    return RedirectResponse(f"/proposals/workflows/runs/{run_id}", status_code=303)
 
 
+@app.post("/api/proposals/workflows/runs/{run_id}/status")
 @app.post("/api/workflows/runs/{run_id}/status")
 async def update_workflow_status(run_id: str, status: str = Form(...)):
     if status not in WORKFLOW_RUN_STATUSES:
@@ -1165,9 +1201,10 @@ async def update_workflow_status(run_id: str, status: str = Form(...)):
         )
         create_event(db, "human", "user", "workflow_run", run_id, "workflow_status_changed", {"status": status})
         db.commit()
-    return RedirectResponse(f"/workflows/runs/{run_id}", status_code=303)
+    return RedirectResponse(f"/proposals/workflows/runs/{run_id}", status_code=303)
 
 
+@app.post("/api/proposals/workflows/runs/{run_id}/handoffs")
 @app.post("/api/workflows/runs/{run_id}/handoffs")
 async def create_handoff(
     run_id: str,
@@ -1192,7 +1229,7 @@ async def create_handoff(
         )
         create_event(db, "human", "user", "workflow_run", run_id, "handoff_requested", {"handoff_id": handoff_id, "from_agent_id": from_agent_id, "to_agent_id": to_agent_id})
         db.commit()
-    return RedirectResponse(f"/workflows/runs/{run_id}", status_code=303)
+    return RedirectResponse(f"/proposals/workflows/runs/{run_id}", status_code=303)
 
 
 @app.post("/api/handoffs/{handoff_id}/status")
@@ -1208,7 +1245,7 @@ async def update_handoff_status(handoff_id: str, status: str = Form(...)):
         if handoff.get("workflow_run_id"):
             create_event(db, "human", "user", "workflow_run", handoff["workflow_run_id"], "handoff_status_changed", {"handoff_id": handoff_id, "status": status})
         db.commit()
-    target = f"/workflows/runs/{handoff['workflow_run_id']}" if handoff.get("workflow_run_id") else "/workflows"
+    target = f"/proposals/workflows/runs/{handoff['workflow_run_id']}" if handoff.get("workflow_run_id") else "/proposals/workflows"
     return RedirectResponse(target, status_code=303)
 
 
@@ -1221,6 +1258,7 @@ async def approvals_page(request: Request):
     return templates.TemplateResponse(request=request, name="approvals.html", context=template_context({"approvals": approvals, "grouped": grouped, "policies": policies}))
 
 
+@app.post("/api/proposals/approvals/{approval_id}/decision")
 @app.post("/api/approvals/{approval_id}/decision")
 async def decide_approval(approval_id: str, status: str = Form(...), decision_reason: str = Form("")):
     if status not in {"approved", "rejected"}:
@@ -1236,7 +1274,7 @@ async def decide_approval(approval_id: str, status: str = Form(...), decision_re
         )
         create_event(db, "human", "user", approval["entity_type"], approval["entity_id"], f"approval_{status}", {"approval_id": approval_id, "decision_reason": decision_reason})
         db.commit()
-    return RedirectResponse("/approvals", status_code=303)
+    return RedirectResponse("/proposals/approvals", status_code=303)
 
 
 @app.get("/budgets", response_class=HTMLResponse)
@@ -1250,6 +1288,7 @@ async def budgets_page(request: Request):
     return templates.TemplateResponse(request=request, name="budgets.html", context=template_context({"budgets": budgets, "agents": agents, "goals": goals, "workflows": workflows, "projects": projects}))
 
 
+@app.post("/api/proposals/budgets")
 @app.post("/api/budgets")
 async def create_budget(
     scope_type: str = Form(...),
@@ -1271,9 +1310,10 @@ async def create_budget(
         )
         create_event(db, "human", "user", "budget", budget_id, "budget_created", {"scope_type": scope_type, "scope_id": scope_id, "limit_usd": limit_usd})
         db.commit()
-    return RedirectResponse("/budgets", status_code=303)
+    return RedirectResponse("/proposals/budgets", status_code=303)
 
 
+@app.post("/api/proposals/budgets/{budget_id}")
 @app.post("/api/budgets/{budget_id}")
 async def update_budget(
     budget_id: str,
@@ -1289,9 +1329,10 @@ async def update_budget(
         )
         create_event(db, "human", "user", "budget", budget_id, "budget_updated", {"limit_usd": limit_usd, "behavior_on_limit": behavior_on_limit})
         db.commit()
-    return RedirectResponse("/budgets", status_code=303)
+    return RedirectResponse("/proposals/budgets", status_code=303)
 
 
+@app.post("/api/proposals/usage")
 @app.post("/api/usage")
 async def create_usage_record(
     scope_type: str = Form(...),
@@ -1321,5 +1362,5 @@ async def create_usage_record(
         if scope_type == "proposal":
             ensure_policy_approvals(db, scope_id)
         db.commit()
-    referer = "/budgets"
+    referer = "/proposals/budgets"
     return RedirectResponse(referer, status_code=303)
