@@ -63,12 +63,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if request.url.path.startswith("/api/"):
             # API routes: check session token exists
-            token = request.cookies.get("__Secure-next-auth.session-token") or request.cookies.get("next-auth.session-token")
+            token = request.cookies.get("__Secure-authjs.session-token") or request.cookies.get("authjs.session-token")
             if not token:
                 return JSONResponse({"error": "unauthorized"}, status_code=401)
         else:
             # Page routes: redirect to signin if no token
-            token = request.cookies.get("__Secure-next-auth.session-token") or request.cookies.get("next-auth.session-token")
+            token = request.cookies.get("__Secure-authjs.session-token") or request.cookies.get("authjs.session-token")
             if not token:
                 return RedirectResponse(f"{AUTH_URL}/api/auth/signin")
         return await call_next(request)
