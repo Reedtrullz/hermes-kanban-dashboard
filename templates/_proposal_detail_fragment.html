@@ -1,86 +1,130 @@
 <div id="proposal-content" hx-get="/api/proposals/{{ proposal.id }}/fragment" hx-trigger="every 5s" hx-swap="outerHTML">
-  <div class="detail-header">
-    <h2>{{ proposal.title }}</h2>
-    <div class="meta">
-      <span class="badge badge-{{ proposal.status }}">{{ PROPOSAL_LABELS[proposal.status] }}</span>
-      <span>{{ proposal.board }}</span>
-      <span>by {{ proposal.author }}</span>
-      <span class="reltime" data-ts="{{ proposal.updated_at }}"></span>
-    </div>
-  </div>
-
-  {% if proposal.body %}
-  <div class="detail-body">{{ proposal.body }}</div>
-  {% endif %}
-
-  <div class="status-bar">
-    {% for s in ["review","approved","implemented","rejected"] %}
-    <button class="btn {% if proposal.status == s %}btn-active{% elif s == 'approved' %}btn-approve{% elif s == 'rejected' %}btn-reject{% endif %}"
-            hx-patch="/api/proposals/{{ proposal.id }}/status"
-            hx-vals='{"status":"{{ s }}"}'
-            hx-swap="none">
-      {% if proposal.status == s %}● {% endif %}{{ PROPOSAL_LABELS[s] }}
-    </button>
-    {% endfor %}
-  </div>
-
-  {% if proposal.status == 'processing' %}
-  <div class="processing-bar">
-    <div class="spinner"></div>
-    <span style="font-size:13px;color:var(--accent)">Agents are analyzing your proposal. Comments will appear here as they respond...</span>
-  </div>
-  {% endif %}
-
-  <div class="comments-section">
-    <h3>Agent reviews ({{ comments|selectattr('parent_id','none')|list|length }})</h3>
-
-    {% set top_level = comments|selectattr('parent_id','none')|list %}
-    {% for c in top_level %}
-    {% set replies = comments|selectattr('parent_id','equalto',c.id)|list %}
-    <div class="thread">
-      <div class="comment" style="border-left-color:{% if c.author in AGENT_COLORS %}{{ AGENT_COLORS[c.author] }}{% else %}var(--muted){% endif %};border-left-width:3px;border-left-style:solid">
-        <div class="author-line">
-          <span>{% if c.author in AGENT_EMOJI %}{{ AGENT_EMOJI[c.author] }}{% else %}?{% endif %}</span>
-          <span class="author-name">{{ c.author }}</span>
-          <span class="author-badge">agent</span>
+  <div class="two-col">
+    <section>
+      <div class="card">
+        <div class="split">
+          <div>
+            <h2 style="font-size:22px;margin-bottom:6px">{{ proposal.title }}</h2>
+            <div class="row small muted">
+              <span class="badge badge-{{ proposal.status }}">{{ PROPOSAL_LABELS[proposal.status] }}</span>
+              <span class="badge badge-{{ proposal.risk_level }}">{{ proposal.risk_level }}</span>
+              <span>{{ proposal.board }}</span>
+              <span>by {{ proposal.author }}</span>
+              <span class="reltime" data-ts="{{ proposal.updated_at }}"></span>
+              <span>{{ money(proposal.cost_total) }}</span>
+            </div>
+            <div class="small muted" style="margin-top:8px">
+              {% if proposal.goal %}Goal: <a class="link" href="/goals/{{ proposal.goal.id }}">{{ proposal.goal.title }}</a>{% else %}No goal linked{% endif %}
+              {% if proposal.parent %} / Parent: <a class="link" href="/proposals/{{ proposal.parent.id }}">{{ proposal.parent.title }}</a>{% endif %}
+              {% if proposal.agent %} / Agent: <a class="link" href="/agents/{{ proposal.agent.id }}">{{ proposal.agent.name }}</a>{% endif %}
+            </div>
+          </div>
         </div>
-        <div class="body md-body">{{ c.body }}</div>
-        <div class="time reltime" data-ts="{{ c.created_at }}"></div>
-        <button class="reply-toggle" onclick="toggleReply({{ c.id }})">↩ Reply</button>
+        {% if proposal.body %}<div class="body" style="margin-top:14px">{{ proposal.body }}</div>{% endif %}
       </div>
 
-      {% if replies %}
-      <div class="replies">
-        {% for r in replies %}
-        <div class="comment">
-          <div class="author-line">
-            <span>💬</span>
-            <span class="author-name">{{ r.author }}</span>
+      <div class="card">
+        <h3>Card Status</h3>
+        <div class="row">
+          {% for s in ["review","approved","implemented","rejected"] %}
+          <form action="/api/proposals/{{ proposal.id }}/status" method="post">
+            <input type="hidden" name="status" value="{{ s }}">
+            <button class="btn {% if proposal.status == s %}btn-primary{% endif %}" type="submit">{{ PROPOSAL_LABELS[s] }}</button>
+          </form>
+          {% endfor %}
+        </div>
+        {% if proposal.status == 'processing' %}
+        <p class="small muted" style="margin-top:10px">Agents are analyzing this card. Comments will appear here as they respond.</p>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h3>Acceptance Criteria</h3>
+        {% if proposal.criteria %}
+          <ul class="small" style="margin-left:18px">
+          {% for item in proposal.criteria %}<li style="margin-bottom:4px">{{ item }}</li>{% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted small">No acceptance criteria yet.</p>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h3>Agent Reviews</h3>
+        {% set top_level = comments|selectattr('parent_id','none')|list %}
+        {% for c in top_level %}
+        {% set replies = comments|selectattr('parent_id','equalto',c.id)|list %}
+        <div class="card" style="background:var(--bg);border-left:3px solid var(--accent)">
+          <div class="row small"><strong>{{ c.author }}</strong><span class="muted reltime" data-ts="{{ c.created_at }}"></span></div>
+          <div class="body md-body">{{ c.body }}</div>
+          {% for r in replies %}
+          <div class="card" style="background:var(--surface2);margin:8px 0 0 18px">
+            <div class="row small"><strong>{{ r.author }}</strong><span class="muted reltime" data-ts="{{ r.created_at }}"></span></div>
+            <div class="body md-body">{{ r.body }}</div>
           </div>
-          <div class="body md-body">{{ r.body }}</div>
-          <div class="time reltime" data-ts="{{ r.created_at }}"></div>
+          {% endfor %}
+          <form action="/api/proposals/{{ proposal.id }}/comments" method="post" style="margin-top:8px">
+            <input type="hidden" name="author" value="user">
+            <input type="hidden" name="parent_id" value="{{ c.id }}">
+            <div class="row"><input name="body" required placeholder="Reply..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px;color:var(--text)"><button class="btn">Reply</button></div>
+          </form>
         </div>
         {% endfor %}
+        {% if not top_level %}<p class="muted small">Waiting for agent reviews.</p>{% endif %}
       </div>
-      {% endif %}
 
-      <form class="reply-form" id="reply-{{ c.id }}"
-            hx-post="/api/proposals/{{ proposal.id }}/comments"
-            hx-vals='{"parent_id":"{{ c.id }}"}'
-            hx-target="#proposal-content"
-            hx-swap="outerHTML"
-            hx-on::after-request="this.reset()">
-        <input type="hidden" name="author" value="user">
-        <input name="body" placeholder="Reply to {{ c.author }}..." required>
-        <button type="submit">Send</button>
-      </form>
-    </div>
-    {% endfor %}
+      <div class="card">
+        <h3>Timeline</h3>
+        <div class="timeline">
+          {% for e in events %}
+          <div class="timeline-item">
+            <div class="small"><strong>{{ e.event_type }}</strong> <span class="muted">by {{ e.actor_type }}:{{ e.actor_id }}</span></div>
+            <div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div>
+          </div>
+          {% endfor %}
+          {% if not events %}<p class="muted small">No audit events yet.</p>{% endif %}
+        </div>
+      </div>
+    </section>
 
-    {% if not top_level %}
-    <div style="color:var(--muted);font-size:12px;text-align:center;padding:20px 0">
-      Waiting for agent reviews...
-    </div>
-    {% endif %}
+    <aside>
+      <div class="card">
+        <h3>Edit Operations</h3>
+        <form action="/api/proposals/{{ proposal.id }}/metadata" method="post">
+          <div class="field"><label>Goal</label><select name="goal_id"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.id }}" {% if proposal.goal_id == g.id %}selected{% endif %}>{{ g.title }}</option>{% endfor %}</select></div>
+          <div class="field"><label>Parent Card</label><select name="parent_id"><option value="">No parent</option>{% for p in parents %}<option value="{{ p.id }}" {% if proposal.parent_id == p.id %}selected{% endif %}>{{ p.title }}</option>{% endfor %}</select></div>
+          <div class="field"><label>Assigned Agent</label><select name="assigned_agent_id"><option value="">Unassigned</option>{% for a in agents %}<option value="{{ a.id }}" {% if proposal.assigned_agent_id == a.id %}selected{% endif %}>{{ a.name }} - {{ a.role_title }}</option>{% endfor %}</select></div>
+          <div class="field"><label>Risk</label><select name="risk_level">{% for r in RISK_LEVELS %}<option value="{{ r }}" {% if proposal.risk_level == r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+          <div class="field"><label>Acceptance Criteria</label><textarea name="acceptance_criteria">{{ json_to_lines(proposal.acceptance_criteria_json) }}</textarea></div>
+          <div class="field"><label>Estimated Cost USD</label><input name="estimated_cost_usd" type="number" step="0.01" value="{{ proposal.estimated_cost_usd }}"></div>
+          <div class="field"><label>Actual Cost USD</label><input name="actual_cost_usd" type="number" step="0.01" value="{{ proposal.actual_cost_usd }}"></div>
+          <button class="btn btn-primary">Save</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Workflow Runs</h3>
+        {% for run in workflow_runs %}
+        <p class="small"><a class="link" href="/workflows/runs/{{ run.id }}">{{ run.template_name }}</a> <span class="badge badge-{{ run.status }}">{{ run.status }}</span></p>
+        {% endfor %}
+        {% if not workflow_runs %}<p class="muted small">No workflow runs.</p>{% endif %}
+      </div>
+
+      <div class="card">
+        <h3>Approvals</h3>
+        {% for approval in approvals %}
+        <p class="small"><span class="badge badge-{{ approval.risk_level }}">{{ approval.risk_level }}</span> {{ approval.title }} <span class="muted">{{ approval.status }}</span></p>
+        {% endfor %}
+        {% if not approvals %}<p class="muted small">No approval requests.</p>{% endif %}
+      </div>
+
+      <div class="card">
+        <h3>Handoffs</h3>
+        {% for h in handoffs %}
+        <p class="small">{{ h.from_agent or "Human" }} -> {{ h.to_agent or "Unassigned" }} <span class="badge">{{ h.status }}</span></p>
+        {% endfor %}
+        {% if not handoffs %}<p class="muted small">No handoffs.</p>{% endif %}
+      </div>
+    </aside>
   </div>
 </div>

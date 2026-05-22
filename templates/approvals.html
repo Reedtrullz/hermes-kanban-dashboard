@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Approvals - Hermes{% endblock %}
+{% block content %}
+<h2 style="font-size:20px;margin-bottom:12px">Approval Inbox</h2>
+{% for risk, items in grouped.items() %}
+<section class="card">
+  <h3><span class="badge badge-{{ risk }}">{{ risk }}</span> {{ items|length }} request{% if items|length != 1 %}s{% endif %}</h3>
+  {% for a in items %}
+  <div class="card" style="background:var(--bg)">
+    <div class="split">
+      <div>
+        <h3>{{ a.title }}</h3>
+        <p class="small muted">{{ a.entity_type }}:{{ a.entity_id }} / {{ a.reason }}</p>
+        <p class="tiny muted">Status: {{ a.status }}</p>
+      </div>
+      {% if a.status == 'pending' %}
+      <div class="row">
+        <form action="/api/approvals/{{ a.id }}/decision" method="post"><input type="hidden" name="status" value="approved"><input type="hidden" name="decision_reason" value="Approved from inbox"><button class="btn btn-primary">Approve</button></form>
+        <form action="/api/approvals/{{ a.id }}/decision" method="post"><input type="hidden" name="status" value="rejected"><input type="hidden" name="decision_reason" value="Rejected from inbox"><button class="btn btn-danger">Reject</button></form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endfor %}
+<section class="card">
+  <h3>Policies</h3>
+  {% for p in policies %}<p class="small">{{ p.name }} <span class="badge">{{ p.action }}</span></p>{% endfor %}
+</section>
+{% endblock %}

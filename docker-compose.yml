@@ -1,0 +1,16 @@
+services:
+  hermes-kanban-dashboard:
+    build: .
+    image: hermes-kanban-dashboard:local
+    ports:
+      - "8089:8089"
+    env_file:
+      - .env
+    environment:
+      HERMES_HOME: /data/hermes
+    volumes:
+      - hermes-data:/data/hermes
+    restart: unless-stopped
+
+volumes:
+  hermes-data:

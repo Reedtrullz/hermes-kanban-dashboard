@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Goals - Hermes{% endblock %}
+{% block content %}
+<div class="two-col">
+  <section>
+    <h2 style="font-size:20px;margin-bottom:12px">Goals</h2>
+    {% for goal in goals %}
+    <article class="card">
+      <div class="split">
+        <div><h3><a class="link" style="color:var(--accent);padding:0" href="/goals/{{ goal.id }}">{{ goal.title }}</a></h3><p class="small muted">{{ goal.desired_outcome }}</p></div>
+        <div class="row"><span class="badge badge-{{ goal.priority }}">{{ goal.priority }}</span><span class="badge badge-{{ goal.status }}">{{ goal.status }}</span></div>
+      </div>
+      <div class="row small muted" style="margin-top:10px"><span>{{ goal.cards|length }} cards</span><span>{{ money(goal.cost_total) }}</span>{% if goal.due_date %}<span>Due {{ goal.due_date }}</span>{% endif %}</div>
+    </article>
+    {% endfor %}
+    {% if not goals %}<div class="empty card">No goals yet.</div>{% endif %}
+  </section>
+  <aside class="card">
+    <h3>Create Goal</h3>
+    <form action="/api/goals" method="post">
+      <div class="field"><label>Title</label><input name="title" required></div>
+      <div class="field"><label>Desired Outcome</label><textarea name="desired_outcome"></textarea></div>
+      <div class="field"><label>Success Metric</label><input name="success_metric"></div>
+      <div class="field"><label>Priority</label><select name="priority">{% for p in GOAL_PRIORITIES %}<option value="{{ p }}">{{ p }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Status</label><select name="status">{% for s in GOAL_STATUSES %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Owner Type</label><input name="owner_type" value="human"></div>
+      <div class="field"><label>Owner</label><input name="owner_id" value="user"></div>
+      <div class="field"><label>Due Date</label><input name="due_date" type="date"></div>
+      <button class="btn btn-primary">Create</button>
+    </form>
+  </aside>
+</div>
+{% endblock %}

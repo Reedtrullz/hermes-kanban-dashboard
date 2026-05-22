@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Budgets - Hermes{% endblock %}
+{% block content %}
+<div class="two-col">
+  <section>
+    <h2 style="font-size:20px;margin-bottom:12px">Budgets</h2>
+    {% for b in budgets %}
+    <article class="card">
+      <div class="split">
+        <div><h3>{{ b.scope_type }}: {{ b.scope_id }}</h3><p class="small muted">{{ b.period }} / {{ b.behavior_on_limit }}</p></div>
+        <span class="badge {% if b.is_over %}badge-high{% endif %}">{{ money(b.spent_usd) }} / {{ money(b.limit_usd) }}</span>
+      </div>
+      <div class="meter"><span style="width:{{ [100, (b.spent_usd / b.limit_usd * 100)|round(0)]|min if b.limit_usd else 0 }}%"></span></div>
+      {% if b.is_over %}<p class="small warn" style="margin-top:8px">Budget warning: scope is over limit.</p>{% endif %}
+      <form action="/api/budgets/{{ b.id }}" method="post" class="row" style="margin-top:10px">
+        <input name="period" value="{{ b.period }}" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px;color:var(--text);width:90px">
+        <input name="limit_usd" type="number" step="0.01" value="{{ b.limit_usd }}" style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px;color:var(--text);width:110px">
+        <select name="behavior_on_limit"><option {% if b.behavior_on_limit == 'warn' %}selected{% endif %}>warn</option><option {% if b.behavior_on_limit == 'require_approval' %}selected{% endif %}>require_approval</option><option {% if b.behavior_on_limit == 'pause_agent' %}selected{% endif %}>pause_agent</option><option {% if b.behavior_on_limit == 'block_runs' %}selected{% endif %}>block_runs</option></select>
+        <button class="btn">Save</button>
+      </form>
+    </article>
+    {% endfor %}
+    {% if not budgets %}<div class="empty card">No budgets yet.</div>{% endif %}
+  </section>
+  <aside class="card">
+    <h3>Create Budget</h3>
+    <form action="/api/budgets" method="post">
+      <div class="field"><label>Scope Type</label><select name="scope_type"><option>workspace</option><option>goal</option><option>project</option><option>agent</option><option>workflow</option><option>proposal</option></select></div>
+      <div class="field"><label>Scope ID</label><input name="scope_id" value="default" placeholder="default, goal id, agent id"></div>
+      <div class="field"><label>Period</label><select name="period"><option>daily</option><option>weekly</option><option selected>monthly</option><option>total</option></select></div>
+      <div class="field"><label>Limit USD</label><input name="limit_usd" type="number" step="0.01" required></div>
+      <div class="field"><label>Behavior</label><select name="behavior_on_limit"><option>warn</option><option>require_approval</option><option>pause_agent</option><option>block_runs</option></select></div>
+      <button class="btn btn-primary">Create</button>
+    </form>
+    <div class="card" style="background:var(--bg);margin-top:12px">
+      <h3>Record Manual Usage</h3>
+      <form action="/api/usage" method="post">
+        <div class="field"><label>Scope Type</label><input name="scope_type" value="workspace"></div>
+        <div class="field"><label>Scope ID</label><input name="scope_id" value="default"></div>
+        <div class="field"><label>Estimated Cost USD</label><input name="estimated_cost_usd" type="number" step="0.01" value="0"></div>
+        <div class="field"><label>Note</label><textarea name="manual_note"></textarea></div>
+        <button class="btn">Record</button>
+      </form>
+    </div>
+  </aside>
+</div>
+{% endblock %}

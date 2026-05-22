@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Workflows - Hermes{% endblock %}
+{% block content %}
+<div class="two-col">
+  <section>
+    <h2 style="font-size:20px;margin-bottom:12px">Workflow Runs</h2>
+    {% for run in runs %}
+    <article class="card">
+      <div class="split">
+        <div>
+          <h3><a class="link" style="color:var(--accent);padding:0" href="/workflows/runs/{{ run.id }}">{{ run.template_name }}</a></h3>
+          <p class="small muted">{% if run.proposal_title %}Card: {{ run.proposal_title }}{% endif %}{% if run.goal_title %} Goal: {{ run.goal_title }}{% endif %}</p>
+        </div>
+        <span class="badge badge-{{ run.status }}">{{ run.status }}</span>
+      </div>
+    </article>
+    {% endfor %}
+    {% if not runs %}<div class="empty card">No workflow runs yet.</div>{% endif %}
+
+    <h2 style="font-size:20px;margin:22px 0 12px">Templates</h2>
+    {% for template in templates_list %}
+    <article class="card">
+      <h3>{{ template.name }}</h3>
+      <p class="small muted">{{ template.description }}</p>
+      <div class="row" style="margin-top:10px">{% for s in template.stages %}<span class="badge">{{ s.position }}. {{ s.name }}</span>{% endfor %}</div>
+    </article>
+    {% endfor %}
+  </section>
+  <aside class="card">
+    <h3>Start Workflow</h3>
+    <form action="/api/workflows/start" method="post">
+      <div class="field"><label>Template</label><select name="template_id">{% for t in templates_list %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Card</label><select name="proposal_id"><option value="">No card</option>{% for p in proposals %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Goal</label><select name="goal_id"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.id }}">{{ g.title }}</option>{% endfor %}</select></div>
+      <button class="btn btn-primary">Start</button>
+    </form>
+  </aside>
+</div>
+{% endblock %}
