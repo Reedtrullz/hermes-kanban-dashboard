@@ -49,10 +49,6 @@
 <body>
 <header>
   <h1>Proposals</h1>
-  <nav>
-    <a href="/board/default">Kanban</a>
-    <a href="/proposals">Proposals</a>
-  </nav>
 </header>
 
 <main>
@@ -100,10 +96,7 @@
           hx-post="/api/proposals/{{ proposal.id }}/comments"
           hx-on::after-request="location.reload()">
       <select name="author">
-        <option value="orchestrator">orchestrator</option>
-        <option value="coder">coder</option>
-        <option value="researcher">researcher</option>
-        <option value="reviewer">reviewer</option>
+        {% for p in profiles %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
       </select>
       <input name="body" placeholder="Add agent comment..." required>
       <button type="submit" class="btn btn-active">Post</button>
