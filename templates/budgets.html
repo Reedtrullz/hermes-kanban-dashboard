@@ -37,7 +37,8 @@
       <form action="/api/proposals/usage" method="post">
         <div class="field"><label>Scope Type</label><input name="scope_type" value="workspace"></div>
         <div class="field"><label>Scope ID</label><input name="scope_id" value="default"></div>
-        <div class="field"><label>Estimated Cost USD</label><input name="estimated_cost_usd" type="number" step="0.01" value="0"></div>
+        <div class="field"><label>Actual Cost USD</label><input name="actual_cost_usd" type="number" step="0.0001" value="0"></div>
+        <div class="field"><label>Estimated Cost USD</label><input name="estimated_cost_usd" type="number" step="0.0001" value="0"></div>
         <div class="field"><label>Note</label><textarea name="manual_note"></textarea></div>
         <button class="btn">Record</button>
       </form>

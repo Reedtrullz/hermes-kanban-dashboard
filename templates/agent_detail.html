@@ -11,7 +11,9 @@
       </div>
       <p class="body" style="margin-top:12px">{{ agent.purpose }}</p>
       <p class="small muted" style="margin-top:8px">{{ agent.provider }} / {{ agent.model_name }}</p>
-      <div class="small" style="margin-top:8px">Budget: {{ money(agent.spent_usd if agent.spent_usd else 0) }} / {{ money(agent.monthly_budget_usd) }}</div>
+      <div class="small" style="margin-top:8px">This month: {{ money(agent.monthly_actual_spend_usd) }} / {{ money(agent.monthly_budget_usd) }}</div>
+      <div class="meter"><span style="width:{% if agent.monthly_budget_usd %}{{ [100, (agent.monthly_actual_spend_usd / agent.monthly_budget_usd * 100)|round(0)]|min }}{% else %}0{% endif %}%"></span></div>
+      <div class="small muted" style="margin-top:8px">Actual all-time: {{ money(agent.actual_spend_usd) }} / Estimated: {{ money(agent.estimated_spend_usd) }}</div>
     </div>
     <div class="card">
       <h3>Assigned Cards</h3>
@@ -22,6 +24,23 @@
       <h3>Handoffs</h3>
       {% for h in handoffs %}<p class="small">{{ h.from_agent or "Human" }} -> {{ h.to_agent or "Unassigned" }} <span class="badge">{{ h.status }}</span> {{ h.reason }}</p>{% endfor %}
       {% if not handoffs %}<p class="muted small">No handoffs.</p>{% endif %}
+    </div>
+    <div class="card">
+      <h3>Actual Cost Records</h3>
+      <table class="table">
+        <tr><th>When</th><th>Provider</th><th>Tokens</th><th>Actual</th><th>Estimated</th><th>Note</th></tr>
+        {% for u in usage %}
+        <tr>
+          <td><span class="reltime" data-ts="{{ u.created_at }}"></span></td>
+          <td>{{ u.provider }} / {{ u.model }}</td>
+          <td>{{ u.input_tokens }} in / {{ u.output_tokens }} out{% if u.cached_tokens %} / {{ u.cached_tokens }} cached{% endif %}</td>
+          <td>{{ money(u.actual_cost_usd) }}</td>
+          <td>{{ money(u.estimated_cost_usd) }}</td>
+          <td>{{ u.manual_note }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% if not usage %}<p class="muted small">No actual cost records yet.</p>{% endif %}
     </div>
     <div class="card">
       <h3>Timeline</h3>
@@ -41,6 +60,23 @@
       <div class="field"><label>Monthly Budget USD</label><input name="monthly_budget_usd" type="number" step="0.01" value="{{ agent.monthly_budget_usd }}"></div>
       <button class="btn btn-primary">Save</button>
     </form>
+    <div class="card" style="background:var(--bg);margin-top:12px">
+      <h3>Record Actual Cost</h3>
+      <form action="/api/proposals/usage" method="post">
+        <input type="hidden" name="scope_type" value="agent">
+        <input type="hidden" name="scope_id" value="{{ agent.id }}">
+        <div class="field"><label>Provider</label><input name="provider" value="{{ agent.provider }}"></div>
+        <div class="field"><label>Model</label><input name="model" value="{{ agent.model_name }}"></div>
+        <div class="field"><label>Input Tokens</label><input name="input_tokens" type="number" value="0"></div>
+        <div class="field"><label>Output Tokens</label><input name="output_tokens" type="number" value="0"></div>
+        <div class="field"><label>Cached Tokens</label><input name="cached_tokens" type="number" value="0"></div>
+        <div class="field"><label>Tool Calls</label><input name="tool_call_count" type="number" value="0"></div>
+        <div class="field"><label>Actual Cost USD</label><input name="actual_cost_usd" type="number" step="0.0001" value="0" required></div>
+        <div class="field"><label>Estimated Cost USD</label><input name="estimated_cost_usd" type="number" step="0.0001" value="0"></div>
+        <div class="field"><label>Note</label><textarea name="manual_note" placeholder="Invoice line, provider usage page, run id, or reason"></textarea></div>
+        <button class="btn btn-primary">Record Cost</button>
+      </form>
+    </div>
   </aside>
 </div>
 {% endblock %}

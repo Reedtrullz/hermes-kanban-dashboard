@@ -16,8 +16,10 @@
         </div>
         <p class="small" style="margin:10px 0">{{ agent.purpose }}</p>
         <div class="small muted">{{ agent.provider }} / {{ agent.model_name }}</div>
-        <div class="small" style="margin-top:8px">Budget: {{ money(agent.spent_usd) }} / {{ money(agent.monthly_budget_usd) }}</div>
+        <div class="small" style="margin-top:8px">This month: {{ money(agent.monthly_actual_spend_usd) }} / {{ money(agent.monthly_budget_usd) }}</div>
         <div class="meter"><span style="width:{% if agent.monthly_budget_usd %}{{ [100, (agent.spent_usd / agent.monthly_budget_usd * 100)|round(0)]|min }}{% else %}0{% endif %}%"></span></div>
+        <div class="small muted" style="margin-top:6px">Actual all-time: {{ money(agent.actual_spend_usd) }} / Estimated: {{ money(agent.estimated_spend_usd) }}</div>
+        <div class="tiny muted" style="margin-top:4px">{{ agent.usage_record_count }} usage record{% if agent.usage_record_count != 1 %}s{% endif %}</div>
         <div class="row" style="margin-top:10px">
           <form action="/api/proposals/agents/{{ agent.id }}/status" method="post"><input type="hidden" name="status" value="{% if agent.status == 'active' %}paused{% else %}active{% endif %}"><button class="btn">{% if agent.status == 'active' %}Pause{% else %}Resume{% endif %}</button></form>
           <form action="/api/proposals/agents/{{ agent.id }}/status" method="post"><input type="hidden" name="status" value="disabled"><button class="btn btn-danger">Disable</button></form>

@@ -67,6 +67,11 @@ def ts() -> int:
     return int(time.time())
 
 
+def month_start_ts(now: int | None = None) -> int:
+    current = time.localtime(now or ts())
+    return int(time.mktime((current.tm_year, current.tm_mon, 1, 0, 0, 0, 0, 0, -1)))
+
+
 def make_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
 
@@ -386,11 +391,13 @@ def create_schema(db: sqlite3.Connection) -> None:
             cached_tokens INTEGER NOT NULL DEFAULT 0,
             tool_call_count INTEGER NOT NULL DEFAULT 0,
             estimated_cost_usd REAL NOT NULL DEFAULT 0,
+            actual_cost_usd REAL NOT NULL DEFAULT 0,
             manual_note TEXT NOT NULL DEFAULT '',
             created_at INTEGER NOT NULL
         )
         """
     )
+    ensure_column(db, "usage_records", "actual_cost_usd", "REAL NOT NULL DEFAULT 0")
     db.execute(
         """
         CREATE TABLE IF NOT EXISTS budgets (
@@ -541,6 +548,27 @@ def usage_total(db: sqlite3.Connection, scope_type: str, scope_id: str) -> float
     return float(value or 0)
 
 
+def usage_actual_total(db: sqlite3.Connection, scope_type: str, scope_id: str, since_ts: int | None = None) -> float:
+    params: list[Any] = [scope_type, scope_id]
+    clause = ""
+    if since_ts is not None:
+        clause = " AND created_at>=?"
+        params.append(since_ts)
+    value = db.execute(
+        f"SELECT COALESCE(SUM(actual_cost_usd), 0) AS total FROM usage_records WHERE scope_type=? AND scope_id=?{clause}",
+        params,
+    ).fetchone()["total"]
+    return float(value or 0)
+
+
+def proposal_actual_total(db: sqlite3.Connection, where: str = "", params: tuple[Any, ...] = ()) -> float:
+    query = "SELECT COALESCE(SUM(actual_cost_usd), 0) AS total FROM proposals"
+    if where:
+        query += f" WHERE {where}"
+    value = db.execute(query, params).fetchone()["total"]
+    return float(value or 0)
+
+
 def card_cost(db: sqlite3.Connection, proposal_id: str) -> float:
     p = db.execute(
         "SELECT estimated_cost_usd, actual_cost_usd FROM proposals WHERE id=?",
@@ -553,28 +581,41 @@ def card_cost(db: sqlite3.Connection, proposal_id: str) -> float:
 
 def scope_spend(db: sqlite3.Connection, scope_type: str, scope_id: str) -> float:
     if scope_type == "workspace":
-        p_total = db.execute("SELECT COALESCE(SUM(estimated_cost_usd + actual_cost_usd), 0) AS total FROM proposals").fetchone()["total"]
-        u_total = db.execute("SELECT COALESCE(SUM(estimated_cost_usd), 0) AS total FROM usage_records").fetchone()["total"]
+        p_total = proposal_actual_total(db)
+        u_total = db.execute("SELECT COALESCE(SUM(actual_cost_usd), 0) AS total FROM usage_records").fetchone()["total"]
         return float(p_total or 0) + float(u_total or 0)
     if scope_type == "goal":
-        p_total = db.execute(
-            "SELECT COALESCE(SUM(estimated_cost_usd + actual_cost_usd), 0) AS total FROM proposals WHERE goal_id=?",
-            (scope_id,),
-        ).fetchone()["total"]
-        return float(p_total or 0) + usage_total(db, scope_type, scope_id)
+        p_total = proposal_actual_total(db, "goal_id=?", (scope_id,))
+        return float(p_total or 0) + usage_actual_total(db, scope_type, scope_id)
     if scope_type == "agent":
-        p_total = db.execute(
-            "SELECT COALESCE(SUM(estimated_cost_usd + actual_cost_usd), 0) AS total FROM proposals WHERE assigned_agent_id=?",
-            (scope_id,),
-        ).fetchone()["total"]
-        return float(p_total or 0) + usage_total(db, scope_type, scope_id)
+        p_total = proposal_actual_total(db, "assigned_agent_id=?", (scope_id,))
+        return float(p_total or 0) + usage_actual_total(db, scope_type, scope_id)
     if scope_type == "project":
-        p_total = db.execute(
-            "SELECT COALESCE(SUM(estimated_cost_usd + actual_cost_usd), 0) AS total FROM proposals WHERE board=?",
-            (scope_id,),
-        ).fetchone()["total"]
-        return float(p_total or 0) + usage_total(db, scope_type, scope_id)
-    return usage_total(db, scope_type, scope_id)
+        p_total = proposal_actual_total(db, "board=?", (scope_id,))
+        return float(p_total or 0) + usage_actual_total(db, scope_type, scope_id)
+    return usage_actual_total(db, scope_type, scope_id)
+
+
+def agent_cost_summary(db: sqlite3.Connection, agent_id: str) -> dict[str, float | int]:
+    current_month = month_start_ts()
+    assigned_actual = proposal_actual_total(db, "assigned_agent_id=?", (agent_id,))
+    assigned_estimated = db.execute(
+        "SELECT COALESCE(SUM(estimated_cost_usd), 0) AS total FROM proposals WHERE assigned_agent_id=?",
+        (agent_id,),
+    ).fetchone()["total"]
+    usage_actual = usage_actual_total(db, "agent", agent_id)
+    usage_actual_month = usage_actual_total(db, "agent", agent_id, current_month)
+    usage_estimated = usage_total(db, "agent", agent_id)
+    usage_count = db.execute(
+        "SELECT COUNT(*) AS total FROM usage_records WHERE scope_type='agent' AND scope_id=?",
+        (agent_id,),
+    ).fetchone()["total"]
+    return {
+        "actual_spend_usd": float(assigned_actual or 0) + usage_actual,
+        "monthly_actual_spend_usd": usage_actual_month,
+        "estimated_spend_usd": float(assigned_estimated or 0) + usage_estimated,
+        "usage_record_count": int(usage_count or 0),
+    }
 
 
 def budget_rows(db: sqlite3.Connection, scope_type: str | None = None, scope_id: str | None = None) -> list[dict[str, Any]]:
@@ -893,7 +934,8 @@ async def agents_page(request: Request):
         for agent in agents:
             agent["tools"] = loads(agent.get("tools_allowed_json"), []) or []
             agent["assigned_cards"] = rows(db.execute("SELECT id, title, status, risk_level FROM proposals WHERE assigned_agent_id=? ORDER BY updated_at DESC", (agent["id"],)))
-            agent["spent_usd"] = scope_spend(db, "agent", agent["id"])
+            agent.update(agent_cost_summary(db, agent["id"]))
+            agent["spent_usd"] = agent["monthly_actual_spend_usd"]
             agent["budgets"] = budget_rows(db, "agent", agent["id"])
     return templates.TemplateResponse(request=request, name="agents.html", context=template_context({"agents": agents}))
 
@@ -906,7 +948,8 @@ async def agent_detail(request: Request, agent_id: str):
         if not agent:
             return HTMLResponse("<h2>Not found</h2>", status_code=404)
         agent["tools"] = loads(agent.get("tools_allowed_json"), []) or []
-        agent["spent_usd"] = scope_spend(db, "agent", agent_id)
+        agent.update(agent_cost_summary(db, agent_id))
+        agent["spent_usd"] = agent["monthly_actual_spend_usd"]
         cards = enrich_proposals(db, "SELECT * FROM proposals WHERE assigned_agent_id=? ORDER BY updated_at DESC", (agent_id,))
         handoffs = rows(db.execute("SELECT h.*, fa.name AS from_agent, ta.name AS to_agent FROM agent_handoffs h LEFT JOIN agents fa ON fa.id=h.from_agent_id LEFT JOIN agents ta ON ta.id=h.to_agent_id WHERE h.from_agent_id=? OR h.to_agent_id=? ORDER BY h.created_at DESC", (agent_id, agent_id)))
         usage = rows(db.execute("SELECT * FROM usage_records WHERE scope_type='agent' AND scope_id=? ORDER BY created_at DESC", (agent_id,)))
@@ -1344,6 +1387,7 @@ async def create_usage_record(
     cached_tokens: int = Form(0),
     tool_call_count: int = Form(0),
     estimated_cost_usd: float = Form(0),
+    actual_cost_usd: float = Form(0),
     manual_note: str = Form(""),
 ):
     usage_id = make_id("usage")
@@ -1353,14 +1397,22 @@ async def create_usage_record(
             """
             INSERT INTO usage_records
             (id,scope_type,scope_id,provider,model,input_tokens,output_tokens,cached_tokens,
-             tool_call_count,estimated_cost_usd,manual_note,created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+             tool_call_count,estimated_cost_usd,actual_cost_usd,manual_note,created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
-            (usage_id, scope_type, scope_id, provider, model, input_tokens, output_tokens, cached_tokens, tool_call_count, estimated_cost_usd, manual_note, now),
+            (usage_id, scope_type, scope_id, provider, model, input_tokens, output_tokens, cached_tokens, tool_call_count, estimated_cost_usd, actual_cost_usd, manual_note, now),
         )
-        create_event(db, "human", "user", scope_type, scope_id, "usage_recorded", {"usage_id": usage_id, "estimated_cost_usd": estimated_cost_usd})
+        create_event(db, "human", "user", scope_type, scope_id, "usage_recorded", {"usage_id": usage_id, "estimated_cost_usd": estimated_cost_usd, "actual_cost_usd": actual_cost_usd})
         if scope_type == "proposal":
             ensure_policy_approvals(db, scope_id)
         db.commit()
     referer = "/proposals/budgets"
+    if scope_type == "agent":
+        referer = f"/proposals/agents/{scope_id}"
+    elif scope_type == "proposal":
+        referer = f"/proposals/{scope_id}"
+    elif scope_type == "goal":
+        referer = f"/proposals/goals/{scope_id}"
+    elif scope_type == "workflow":
+        referer = f"/proposals/workflows/runs/{scope_id}"
     return RedirectResponse(referer, status_code=303)

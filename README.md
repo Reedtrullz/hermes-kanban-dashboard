@@ -59,6 +59,7 @@ The playbook pulls `ghcr.io/reedtrullz/hermes-kanban-dashboard:latest`, runs it 
 - Goals: outcome, success metric, priority, owner, due date, linked cards, total cost, active agents, and audit timeline.
 - Workflows: reusable templates with run stages and explicit handoffs. Seed templates are Feature Delivery, Bug Triage, and Research.
 - Budgets: scoped to workspace, goal, project, agent, workflow, or card. Costs are estimated/manual only.
+- Agent cost tracking: agent budget meters use current-month actual usage records. Open an agent detail page and use "Record Actual Cost" to enter provider/model, tokens, tool calls, and the real billed USD amount from a provider usage page or invoice.
 - Approvals: default policy requests approval for critical-risk cards, card costs above `$2.00`, and completing workflows with failed stages.
 - Audit trail: append-only events for card, agent, goal, workflow, approval, budget, usage, and handoff changes.
 

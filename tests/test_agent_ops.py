@@ -28,7 +28,9 @@ def test_migrates_existing_proposals_schema(tmp_path, monkeypatch):
     main = load_main(tmp_path, monkeypatch)
     with main.db_connect() as db:
         proposal_cols = {r["name"] for r in db.execute("PRAGMA table_info(proposals)").fetchall()}
+        usage_cols = {r["name"] for r in db.execute("PRAGMA table_info(usage_records)").fetchall()}
         assert {"goal_id", "parent_id", "assigned_agent_id", "acceptance_criteria_json", "risk_level", "estimated_cost_usd", "actual_cost_usd"} <= proposal_cols
+        assert "actual_cost_usd" in usage_cols
         assert db.execute("SELECT COUNT(*) AS n FROM agents").fetchone()["n"] >= 6
         assert db.execute("SELECT COUNT(*) AS n FROM workflow_templates").fetchone()["n"] == 3
         assert db.execute("SELECT COUNT(*) AS n FROM approval_policies").fetchone()["n"] == 3
@@ -155,6 +157,46 @@ def test_agent_crud_pause_resume_and_budget_meter_data(tmp_path, monkeypatch):
     client.post(f"/api/agents/{agent['id']}/status", data={"status": "paused"})
     with main.db_connect() as db:
         assert db.execute("SELECT status FROM agents WHERE id=?", (agent["id"],)).fetchone()["status"] == "paused"
+
+
+def test_agent_actual_usage_records_drive_monthly_budget(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    agent_id = "agent_builder"
+
+    response = client.post(
+        "/api/proposals/usage",
+        data={
+            "scope_type": "agent",
+            "scope_id": agent_id,
+            "provider": "openai",
+            "model": "gpt-4.1",
+            "input_tokens": "1000",
+            "output_tokens": "500",
+            "cached_tokens": "100",
+            "tool_call_count": "2",
+            "actual_cost_usd": "1.2345",
+            "estimated_cost_usd": "1.50",
+            "manual_note": "provider usage export",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/proposals/agents/{agent_id}"
+
+    with main.db_connect() as db:
+        usage = db.execute("SELECT * FROM usage_records WHERE scope_type='agent' AND scope_id=?", (agent_id,)).fetchone()
+        assert usage["actual_cost_usd"] == 1.2345
+        summary = main.agent_cost_summary(db, agent_id)
+        assert summary["monthly_actual_spend_usd"] == 1.2345
+        assert summary["actual_spend_usd"] == 1.2345
+        assert summary["estimated_spend_usd"] == 1.5
+
+    detail = client.get(f"/proposals/agents/{agent_id}")
+    assert detail.status_code == 200
+    assert "$1.23" in detail.text
+    assert "provider usage export" in detail.text
 
 
 def test_workflow_start_handoff_failed_completion_approval(tmp_path, monkeypatch):
