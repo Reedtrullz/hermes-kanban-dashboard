@@ -95,7 +95,7 @@
           <form action="/api/proposals/{{ proposal.id }}/metadata" method="post">
             <div class="field"><label>Goal</label><select name="goal_id"><option value="">No goal</option>{% for g in goals %}<option value="{{ g.id }}" {% if proposal.goal_id == g.id %}selected{% endif %}>{{ g.title }}</option>{% endfor %}</select></div>
             <div class="field"><label>Parent Card</label><select name="parent_id"><option value="">No parent</option>{% for p in parents %}<option value="{{ p.id }}" {% if proposal.parent_id == p.id %}selected{% endif %}>{{ p.title }}</option>{% endfor %}</select></div>
-            <div class="field"><label>Assigned Agent</label><select name="assigned_agent_id"><option value="">Unassigned</option>{% for a in agents %}<option value="{{ a.id }}" {% if proposal.assigned_agent_id == a.id %}selected{% endif %}>{{ a.name }} - {{ a.role_title }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Assigned Agent</label><select name="assigned_agent_id" id="agent-select" onchange="updateExecutorHint()"><option value="">Unassigned</option>{% for a in agents %}{% set aexec = a.get('executor_type', 'hermes') %}<option value="{{ a.id }}" data-executor="{{ aexec }}" {% if proposal.assigned_agent_id == a.id %}selected{% endif %}>{{ a.name }} - {{ a.role_title }}{% if aexec != 'hermes' %} [{{ aexec }}]{% endif %}</option>{% endfor %}</select><p id="executor-hint" class="tiny muted" style="margin-top:4px;min-height:18px"></p></div>
             <div class="field"><label>Risk</label><select name="risk_level">{% for r in RISK_LEVELS %}<option value="{{ r }}" {% if proposal.risk_level == r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
             <div class="field"><label>Acceptance Criteria</label><textarea name="acceptance_criteria">{{ json_to_lines(proposal.acceptance_criteria_json) }}</textarea></div>
             <div class="form-grid">
@@ -133,3 +133,20 @@
     </aside>
   </div>
 </div>
+<script>
+function updateExecutorHint() {
+  var sel = document.getElementById('agent-select');
+  var hint = document.getElementById('executor-hint');
+  var opt = sel.options[sel.selectedIndex];
+  var exec = opt.getAttribute('data-executor');
+  if (exec && exec !== 'hermes') {
+    hint.innerHTML = 'Delegates to: <span style="color:#58a6ff">' + exec + '</span>';
+  } else if (exec === 'hermes') {
+    hint.innerHTML = 'Runs natively in Hermes';
+  } else {
+    hint.innerHTML = '';
+  }
+}
+// Run on load for preselected agent
+updateExecutorHint();
+</script>
