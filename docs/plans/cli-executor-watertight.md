@@ -587,7 +587,7 @@ git commit -m "feat: add dry-run Test button for CLI executor pipeline verificat
 
 ```bash
 # Start dev server
-HERMES_REQUIRE_AUTH=0 .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8089 &
+HERMES_REQUIRE_AUTH=0 .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8089 &
 
 # Test executor endpoint
 curl -s http://127.0.0.1:8089/api/agents/agent_builder/executor-status | python3 -m json.tool

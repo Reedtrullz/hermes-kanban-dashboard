@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -11,6 +12,7 @@ from typing import Any
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 from starlette.middleware.base import BaseHTTPMiddleware
 
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
@@ -24,9 +26,10 @@ AUTH_URL = os.environ.get("AUTH_URL", "https://reidar.tech")
 HERMES_REQUIRE_AUTH = os.environ.get("HERMES_REQUIRE_AUTH", "1").lower() not in {"0", "false", "no"}
 HERMES_API_KEY = os.environ.get("HERMES_API_KEY", "hermes-local")
 
-PROPOSAL_STATUSES = ["processing", "review", "approved", "implemented", "rejected"]
+PROPOSAL_STATUSES = ["waiting", "processing", "review", "approved", "implemented", "rejected"]
 PROPOSAL_LABELS = {
-    "processing": "Analyzing...",
+    "waiting": "Waiting for worker",
+    "processing": "In progress",
     "review": "In Review",
     "approved": "Approved",
     "implemented": "Done",
@@ -260,6 +263,32 @@ def safe_return_path(value: str | None, default: str) -> str:
     return default
 
 
+def render_note(value: str | None) -> Markup:
+    """Escape user-authored notes before applying a deliberately small formatter."""
+    text = str(escape(value or ""))
+    text = re.sub(r"`([^`\n]+)`", r"<code>\1</code>", text)
+    text = re.sub(r"\*\*([^*\n]+)\*\*", r"<strong>\1</strong>", text)
+    output: list[str] = []
+    in_list = False
+    for line in text.splitlines() or [""]:
+        if line.startswith("- "):
+            if not in_list:
+                output.append("<ul>")
+                in_list = True
+            output.append(f"<li>{line[2:]}</li>")
+            continue
+        if in_list:
+            output.append("</ul>")
+            in_list = False
+        if line:
+            output.append(f"<p>{line}</p>")
+        else:
+            output.append("<br>")
+    if in_list:
+        output.append("</ul>")
+    return Markup("".join(output))
+
+
 def write_trigger_executor_meta(db: sqlite3.Connection, proposal_id: str) -> None:
     """Write executor metadata alongside the trigger file so external consumers
     know which CLI to spawn without parsing the trigger file format."""
@@ -400,9 +429,9 @@ def ensure_policy_approvals(db: sqlite3.Connection, proposal_id: str) -> None:
             db,
             "proposal",
             proposal_id,
-            "Critical-risk card requires approval",
+            "Critical-risk proposal requires approval",
             "critical",
-            "Default policy requires human approval for critical-risk cards.",
+            "Default policy requires human approval for critical-risk proposals.",
             payload={"risk_level": "critical"},
         )
     if total_cost > 2.0:
@@ -412,7 +441,7 @@ def ensure_policy_approvals(db: sqlite3.Connection, proposal_id: str) -> None:
             proposal_id,
             "Cost threshold exceeded",
             "high",
-            "Default policy requires approval when estimated/manual card cost exceeds $2.00.",
+            "Default policy requires approval when estimated/manual proposal cost exceeds $2.00.",
             payload={"estimated_total_cost_usd": total_cost},
         )
 
@@ -436,7 +465,7 @@ def create_schema(db: sqlite3.Connection) -> None:
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             body TEXT NOT NULL DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'processing',
+            status TEXT NOT NULL DEFAULT 'waiting',
             author TEXT NOT NULL DEFAULT 'user',
             board TEXT NOT NULL DEFAULT 'default',
             created_at INTEGER NOT NULL,
@@ -464,6 +493,7 @@ def create_schema(db: sqlite3.Connection) -> None:
         "risk_level": "TEXT NOT NULL DEFAULT 'low'",
         "estimated_cost_usd": "REAL NOT NULL DEFAULT 0",
         "actual_cost_usd": "REAL NOT NULL DEFAULT 0",
+        "is_demo": "INTEGER NOT NULL DEFAULT 0",
     }.items():
         ensure_column(db, "proposals", column, definition)
     ensure_column(db, "proposal_comments", "parent_id", "INTEGER")
@@ -744,10 +774,10 @@ def seed_defaults(db: sqlite3.Connection) -> None:
             )
 
     policies = [
-        ("policy_critical_card", "Critical-risk cards require approval", {"entity_type": "proposal", "risk_level": "critical"}, "require_approval"),
+        ("policy_critical_card", "Critical-risk proposals require approval", {"entity_type": "proposal", "risk_level": "critical"}, "require_approval"),
         ("policy_cost_threshold", "Over-threshold cost requires approval", {"estimated_cost_usd_gt": 2.0}, "require_approval"),
         ("policy_failed_workflow", "Failed-stage workflow completion requires approval", {"workflow_failed_stage": True}, "require_approval"),
-        ("policy_dangerous_executor", "Dangerous-executor cards require approval", {"entity_type": "proposal", "executor_dangerous": True}, "require_approval"),
+        ("policy_dangerous_executor", "Dangerous-executor proposals require approval", {"entity_type": "proposal", "executor_dangerous": True}, "require_approval"),
     ]
     for policy_id, name, condition, action in policies:
         db.execute(
@@ -945,6 +975,12 @@ def enrich_proposals(db: sqlite3.Connection, query: str, params: tuple[Any, ...]
         p["parent"] = row(db.execute("SELECT id, title FROM proposals WHERE id=?", (p.get("parent_id"),))) if p.get("parent_id") else None
         p["criteria"] = loads(p.get("acceptance_criteria_json"), []) or []
         p["cost_total"] = card_cost(db, p["id"])
+        p["has_pending_decision"] = bool(
+            db.execute(
+                "SELECT 1 FROM approval_requests WHERE entity_type='proposal' AND entity_id=? AND status='pending' LIMIT 1",
+                (p["id"],),
+            ).fetchone()
+        )
     return data
 
 
@@ -970,6 +1006,8 @@ def proposal_context(db: sqlite3.Connection, proposal_id: str) -> dict[str, Any]
         return None
     proposal = proposal_rows[0]
     comments = rows(db.execute("SELECT * FROM proposal_comments WHERE proposal_id=? ORDER BY created_at ASC", (proposal_id,)))
+    for comment in comments:
+        comment["rendered_body"] = render_note(comment.get("body"))
     return {
         "proposal": proposal,
         "comments": comments,
@@ -983,6 +1021,100 @@ def proposal_context(db: sqlite3.Connection, proposal_id: str) -> dict[str, Any]
         "budgets": budget_rows(db, "proposal", proposal_id),
         "executor": get_executor_for_proposal(db, proposal_id),
     }
+
+
+def create_proposal_record(
+    title: str,
+    body: str = "",
+    board: str = "default",
+    assigned_agent_id: str = "",
+    *,
+    status: str = "waiting",
+    is_demo: bool = False,
+    write_trigger: bool = True,
+) -> str:
+    proposal_id = make_id("p")
+    now = ts()
+    with db_connect() as db:
+        db.execute(
+            """
+            INSERT INTO proposals
+            (id,title,body,status,board,assigned_agent_id,is_demo,created_at,updated_at)
+            VALUES (?,?,?,?,?,NULLIF(?, ''),?,?,?)
+            """,
+            (proposal_id, title, body, status, board, assigned_agent_id, int(is_demo), now, now),
+        )
+        create_event(
+            db,
+            "human" if not is_demo else "system",
+            "user" if not is_demo else "demo",
+            "proposal",
+            proposal_id,
+            "proposal_created" if not is_demo else "demo_proposal_created",
+            {"title": title, "board": board, "is_demo": is_demo},
+        )
+        if write_trigger and assigned_agent_id:
+            write_trigger_executor_meta(db, proposal_id)
+        db.commit()
+    if write_trigger:
+        TRIGGER_FILE.write_text(proposal_id)
+    return proposal_id
+
+
+def add_proposal_note(
+    proposal_id: str,
+    body: str,
+    author: str = "agent",
+    parent_id: int | None = None,
+) -> None:
+    now = ts()
+    with db_connect() as db:
+        db.execute(
+            "INSERT INTO proposal_comments (proposal_id,author,body,parent_id,created_at) VALUES (?,?,?,?,?)",
+            (proposal_id, author, body, parent_id, now),
+        )
+        db.execute("UPDATE proposals SET updated_at=? WHERE id=?", (now, proposal_id))
+        create_event(db, "agent" if author != "user" else "human", author, "proposal", proposal_id, "comment_added", {"parent_id": parent_id})
+        db.commit()
+
+
+def resolve_proposal_decision(db: sqlite3.Connection, proposal_id: str, status: str, decision_reason: str = "") -> None:
+    now = ts()
+    pending = rows(
+        db.execute(
+            "SELECT id FROM approval_requests WHERE entity_type='proposal' AND entity_id=? AND status='pending'",
+            (proposal_id,),
+        )
+    )
+    db.execute("UPDATE proposals SET status=?, updated_at=? WHERE id=?", (status, now, proposal_id))
+    db.execute(
+        """
+        UPDATE approval_requests
+        SET status=?, decision_reason=?, decided_by='user', decided_at=?, updated_at=?
+        WHERE entity_type='proposal' AND entity_id=? AND status='pending'
+        """,
+        (status, decision_reason, now, now, proposal_id),
+    )
+    create_event(db, "human", "user", "proposal", proposal_id, "proposal_status_changed", {"status": status})
+    for approval in pending:
+        create_event(
+            db,
+            "human",
+            "user",
+            "proposal",
+            proposal_id,
+            f"approval_{status}",
+            {"approval_id": approval["id"], "decision_reason": decision_reason},
+        )
+
+
+def write_approved_trigger(proposal_id: str) -> None:
+    with db_connect() as db:
+        proposal = row(db.execute("SELECT is_demo FROM proposals WHERE id=?", (proposal_id,)))
+        if proposal and proposal.get("is_demo"):
+            return
+        TRIGGER_FILE.write_text(f"APPROVED:{proposal_id}")
+        write_trigger_executor_meta(db, proposal_id)
 
 
 def get_executor_for_proposal(db: sqlite3.Connection, proposal_id: str) -> dict[str, Any] | None:
@@ -1065,6 +1197,7 @@ async def root():
 @app.get("/proposals", response_class=HTMLResponse)
 async def proposals_list(request: Request):
     executor_filter = request.query_params.get("executor", "")
+    status_filter = request.query_params.get("status", "")
     with db_connect() as db:
         if executor_filter == "cli":
             proposals = enrich_proposals(
@@ -1093,6 +1226,15 @@ async def proposals_list(request: Request):
                 FROM proposals p ORDER BY p.updated_at DESC LIMIT 100
                 """,
             )
+        if status_filter == "waiting":
+            proposals = [p for p in proposals if p["status"] == "waiting" and not p["has_pending_decision"]]
+        elif status_filter == "review":
+            proposals = [p for p in proposals if p["status"] in {"processing", "review"} and not p["has_pending_decision"]]
+        elif status_filter == "decision":
+            proposals = [p for p in proposals if p["has_pending_decision"]]
+        elif status_filter == "done":
+            proposals = [p for p in proposals if p["status"] in {"approved", "implemented", "rejected"} and not p["has_pending_decision"]]
+        agents = rows(db.execute("SELECT id, name, role_title FROM agents WHERE status='active' ORDER BY name"))
         return templates.TemplateResponse(
             request=request,
             name="proposals_list.html",
@@ -1100,6 +1242,8 @@ async def proposals_list(request: Request):
                 "proposals": proposals,
                 "profiles": get_profiles(),
                 "executor_filter": executor_filter,
+                "status_filter": status_filter,
+                "agents": agents,
             }),
         )
 
@@ -1168,6 +1312,18 @@ async def setup_page(request: Request):
         "return_to_workflow": f"/proposals/setup?view=workflow&template_id={selected_template_id or ''}&stage_id={selected_stage_id or ''}",
     }
     return templates.TemplateResponse(request=request, name="setup.html", context=template_context(context))
+
+
+@app.get("/proposals/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    with db_connect() as db:
+        counts = {
+            "goals": db.execute("SELECT COUNT(*) AS n FROM goals").fetchone()["n"],
+            "agents": db.execute("SELECT COUNT(*) AS n FROM agents").fetchone()["n"],
+            "budgets": db.execute("SELECT COUNT(*) AS n FROM budgets").fetchone()["n"],
+            "templates": db.execute("SELECT COUNT(*) AS n FROM workflow_templates").fetchone()["n"],
+        }
+    return templates.TemplateResponse(request=request, name="settings.html", context=template_context({"counts": counts}))
 
 
 @app.get("/proposals/{proposal_id}", response_class=HTMLResponse)
@@ -1292,19 +1448,137 @@ async def proposal_fragment(request: Request, proposal_id: str):
 
 @app.post("/api/proposals")
 async def create_proposal(title: str = Form(...), body: str = Form(""), board: str = Form("default"), assigned_agent_id: str = Form("")):
-    pid = make_id("p")
+    pid = create_proposal_record(title, body, board, assigned_agent_id)
+    return {"ok": True, "id": pid}
+
+
+@app.post("/proposals")
+async def create_proposal_page(title: str = Form(...), body: str = Form(""), board: str = Form("default"), assigned_agent_id: str = Form("")):
+    proposal_id = create_proposal_record(title, body, board, assigned_agent_id)
+    return RedirectResponse(f"/proposals/{proposal_id}", status_code=303)
+
+
+@app.post("/proposals/demo")
+async def create_demo_proposal():
+    with db_connect() as db:
+        existing = row(db.execute("SELECT id FROM proposals WHERE is_demo=1 ORDER BY created_at DESC LIMIT 1"))
+        if existing:
+            return RedirectResponse(f"/proposals/{existing['id']}", status_code=303)
+
+    proposal_id = create_proposal_record(
+        "Review deployment change",
+        "Confirm that the deployment is safe and documented before release.",
+        "Demo walkthrough",
+        "agent_reviewer",
+        status="review",
+        is_demo=True,
+        write_trigger=False,
+    )
     now = ts()
     with db_connect() as db:
         db.execute(
-            "INSERT INTO proposals (id,title,body,status,board,assigned_agent_id,created_at,updated_at) VALUES (?,?,?,'processing',?,NULLIF(?, ''),?,?)",
-            (pid, title, body, board, assigned_agent_id, now, now),
+            """
+            UPDATE proposals
+            SET acceptance_criteria_json=?, risk_level='medium', updated_at=?
+            WHERE id=?
+            """,
+            (
+                dumps([
+                    "Deployment steps are documented",
+                    "Rollback plan is validated",
+                    "Monitoring is configured",
+                ]),
+                now,
+                proposal_id,
+            ),
         )
-        create_event(db, "human", "user", "proposal", pid, "proposal_created", {"title": title, "board": board})
-        if assigned_agent_id:
-            write_trigger_executor_meta(db, pid)
+        db.execute(
+            "INSERT INTO proposal_comments (proposal_id,author,body,parent_id,created_at) VALUES (?,?,?,?,?)",
+            (
+                proposal_id,
+                "Reviewer",
+                "Deployment steps are documented. Confirm rollback validation before approval.",
+                None,
+                now,
+            ),
+        )
+        create_event(db, "agent", "Reviewer", "proposal", proposal_id, "comment_added", {"demo": True})
+        create_approval(
+            db,
+            "proposal",
+            proposal_id,
+            "Review deployment change",
+            "medium",
+            "Demo decision request. No worker is executed.",
+            requested_by_type="demo",
+            requested_by_id="walkthrough",
+            payload={"is_demo": True},
+        )
+        stages = rows(db.execute("SELECT * FROM workflow_template_stages WHERE template_id='workflow_feature_delivery' ORDER BY position"))
+        if stages:
+            run_id = make_id("run")
+            current_index = 1 if len(stages) > 1 else 0
+            run_stage_ids = [make_id("stage") for _ in stages]
+            db.execute(
+                """
+                INSERT INTO workflow_runs
+                (id,template_id,proposal_id,current_stage_id,status,started_by,created_at,updated_at)
+                VALUES (?,'workflow_feature_delivery',?,?,'paused','demo',?,?)
+                """,
+                (run_id, proposal_id, run_stage_ids[current_index], now, now),
+            )
+            for index, stage in enumerate(stages):
+                stage_status = "completed" if index < current_index else ("current" if index == current_index else "pending")
+                db.execute(
+                    """
+                    INSERT INTO workflow_run_stages
+                    (id,run_id,template_stage_id,position,name,status,assigned_agent_id,handoff_agent_id,started_at,completed_at,created_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        run_stage_ids[index],
+                        run_id,
+                        stage["id"],
+                        stage["position"],
+                        stage["name"],
+                        stage_status,
+                        stage.get("assigned_agent_id"),
+                        stage.get("handoff_agent_id"),
+                        now if index <= current_index else None,
+                        now if index < current_index else None,
+                        now,
+                    ),
+                )
+            create_event(db, "system", "demo", "workflow_run", run_id, "workflow_started", {"proposal_id": proposal_id, "is_demo": True})
+            create_event(db, "system", "demo", "proposal", proposal_id, "workflow_started", {"workflow_run_id": run_id, "is_demo": True})
         db.commit()
-    TRIGGER_FILE.write_text(pid)
-    return {"ok": True, "id": pid}
+    return RedirectResponse(f"/proposals/{proposal_id}", status_code=303)
+
+
+@app.post("/proposals/demo/reset")
+async def reset_demo_proposals():
+    with db_connect() as db:
+        proposal_ids = [item["id"] for item in rows(db.execute("SELECT id FROM proposals WHERE is_demo=1"))]
+        if proposal_ids:
+            markers = ",".join("?" for _ in proposal_ids)
+            run_ids = [
+                item["id"]
+                for item in rows(db.execute(f"SELECT id FROM workflow_runs WHERE proposal_id IN ({markers})", proposal_ids))
+            ]
+            if run_ids:
+                run_markers = ",".join("?" for _ in run_ids)
+                db.execute(f"DELETE FROM workflow_run_stages WHERE run_id IN ({run_markers})", run_ids)
+                db.execute(f"DELETE FROM agent_handoffs WHERE workflow_run_id IN ({run_markers})", run_ids)
+                db.execute(f"DELETE FROM approval_requests WHERE entity_type='workflow_run' AND entity_id IN ({run_markers})", run_ids)
+                db.execute(f"DELETE FROM audit_events WHERE entity_type='workflow_run' AND entity_id IN ({run_markers})", run_ids)
+                db.execute(f"DELETE FROM workflow_runs WHERE id IN ({run_markers})", run_ids)
+            db.execute(f"DELETE FROM agent_handoffs WHERE proposal_id IN ({markers})", proposal_ids)
+            db.execute(f"DELETE FROM proposal_comments WHERE proposal_id IN ({markers})", proposal_ids)
+            db.execute(f"DELETE FROM approval_requests WHERE entity_type='proposal' AND entity_id IN ({markers})", proposal_ids)
+            db.execute(f"DELETE FROM audit_events WHERE entity_type='proposal' AND entity_id IN ({markers})", proposal_ids)
+            db.execute(f"DELETE FROM proposals WHERE id IN ({markers})", proposal_ids)
+            db.commit()
+    return RedirectResponse("/proposals", status_code=303)
 
 
 @app.post("/api/proposals/dry-run")
@@ -1319,7 +1593,7 @@ async def create_dry_run_proposal(agent_id: str = Form(...), return_to: str = Fo
 
     label = EXECUTOR_LABELS.get(executor_type, executor_type)
     title = f"[DRY-RUN] Test {label} pipeline"
-    body = f"Dry-run verification for agent '{agent['name']}' ({executor_type}).\n\nThis card verifies the full pipeline: trigger file → executor spawn → diff review → test run.\n\nNo production changes should be made. Expected output: 'DRY_RUN_OK'."
+    body = f"Dry-run verification for agent '{agent['name']}' ({executor_type}).\n\nThis proposal verifies the full pipeline: trigger file -> executor spawn -> diff review -> test run.\n\nNo production changes should be made. Expected output: 'DRY_RUN_OK'."
 
     pid = make_id("p")
     now = ts()
@@ -1341,14 +1615,15 @@ async def update_proposal_status(proposal_id: str, status: str = Form(...)):
         return JSONResponse({"error": f"invalid status: {status}"}, status_code=400)
     now = ts()
     with db_connect() as db:
-        db.execute("UPDATE proposals SET status=?, updated_at=? WHERE id=?", (status, now, proposal_id))
-        create_event(db, "human", "user", "proposal", proposal_id, "proposal_status_changed", {"status": status})
         ensure_policy_approvals(db, proposal_id)
+        if status in {"approved", "rejected"}:
+            resolve_proposal_decision(db, proposal_id, status, f"Proposal {status} by user")
+        else:
+            db.execute("UPDATE proposals SET status=?, updated_at=? WHERE id=?", (status, now, proposal_id))
+            create_event(db, "human", "user", "proposal", proposal_id, "proposal_status_changed", {"status": status})
         db.commit()
     if status == "approved":
-        TRIGGER_FILE.write_text(f"APPROVED:{proposal_id}")
-        with db_connect() as db:
-            write_trigger_executor_meta(db, proposal_id)
+        write_approved_trigger(proposal_id)
     return {"ok": True}
 
 
@@ -1367,16 +1642,18 @@ async def add_proposal_comment(
     author: str = Form("agent"),
     parent_id: int | None = Form(None),
 ):
-    now = ts()
-    with db_connect() as db:
-        db.execute(
-            "INSERT INTO proposal_comments (proposal_id,author,body,parent_id,created_at) VALUES (?,?,?,?,?)",
-            (proposal_id, author, body, parent_id, now),
-        )
-        db.execute("UPDATE proposals SET updated_at=? WHERE id=?", (now, proposal_id))
-        create_event(db, "agent" if author != "user" else "human", author, "proposal", proposal_id, "comment_added", {"parent_id": parent_id})
-        db.commit()
+    add_proposal_note(proposal_id, body, author, parent_id)
     return {"ok": True}
+
+
+@app.post("/proposals/{proposal_id}/notes")
+async def add_proposal_note_page(
+    proposal_id: str,
+    body: str = Form(...),
+    parent_id: int | None = Form(None),
+):
+    add_proposal_note(proposal_id, body, "user", parent_id)
+    return RedirectResponse(f"/proposals/{proposal_id}", status_code=303)
 
 
 @app.post("/api/proposals/{proposal_id}/metadata")
@@ -2017,7 +2294,12 @@ async def approvals_page(request: Request):
 
 @app.post("/api/proposals/approvals/{approval_id}/decision")
 @app.post("/api/approvals/{approval_id}/decision")
-async def decide_approval(approval_id: str, status: str = Form(...), decision_reason: str = Form("")):
+async def decide_approval(
+    approval_id: str,
+    status: str = Form(...),
+    decision_reason: str = Form(""),
+    return_to: str = Form(""),
+):
     if status not in {"approved", "rejected"}:
         return JSONResponse({"error": "invalid approval decision"}, status_code=400)
     now = ts()
@@ -2025,13 +2307,18 @@ async def decide_approval(approval_id: str, status: str = Form(...), decision_re
         approval = row(db.execute("SELECT * FROM approval_requests WHERE id=?", (approval_id,)))
         if not approval:
             return JSONResponse({"error": "not found"}, status_code=404)
-        db.execute(
-            "UPDATE approval_requests SET status=?, decision_reason=?, decided_by='user', decided_at=?, updated_at=? WHERE id=?",
-            (status, decision_reason, now, now, approval_id),
-        )
-        create_event(db, "human", "user", approval["entity_type"], approval["entity_id"], f"approval_{status}", {"approval_id": approval_id, "decision_reason": decision_reason})
+        if approval["entity_type"] == "proposal":
+            resolve_proposal_decision(db, approval["entity_id"], status, decision_reason)
+        else:
+            db.execute(
+                "UPDATE approval_requests SET status=?, decision_reason=?, decided_by='user', decided_at=?, updated_at=? WHERE id=?",
+                (status, decision_reason, now, now, approval_id),
+            )
+            create_event(db, "human", "user", approval["entity_type"], approval["entity_id"], f"approval_{status}", {"approval_id": approval_id, "decision_reason": decision_reason})
         db.commit()
-    return RedirectResponse("/proposals/approvals", status_code=303)
+    if approval["entity_type"] == "proposal" and status == "approved":
+        write_approved_trigger(approval["entity_id"])
+    return RedirectResponse(safe_return_path(return_to, "/proposals/approvals"), status_code=303)
 
 
 @app.get("/budgets", response_class=HTMLResponse)

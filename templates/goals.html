@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Goals - Hermes{% endblock %}
-{% block nav_goals %}is-active{% endblock %}
+{% block nav_settings %}is-active{% endblock %}
 {% block page_title %}Goals{% endblock %}
 {% block content %}
 <div class="panel-layout">
@@ -18,13 +18,13 @@
         </div>
       </div>
       <div class="row small muted" style="margin-top:8px">
-        <span>{{ goal.cards|length }} cards</span>
+        <span>{{ goal.cards|length }} proposals</span>
         <span>{{ money(goal.cost_total) }}</span>
         {% if goal.due_date %}<span>Due {{ goal.due_date }}</span>{% endif %}
       </div>
     </div>
     {% endfor %}
-    {% if not goals %}<div class="card empty">No goals yet. Create one to organize your cards.</div>{% endif %}
+    {% if not goals %}<div class="card empty">No goals yet. Create one to organize your proposals.</div>{% endif %}
   </section>
 
   <aside>

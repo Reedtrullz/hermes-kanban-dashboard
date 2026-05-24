@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Agents - Hermes{% endblock %}
-{% block nav_agents %}is-active{% endblock %}
+{% block nav_settings %}is-active{% endblock %}
 {% block page_title %}Agents{% endblock %}
 {% block content %}
 <div class="panel-layout">
@@ -76,10 +76,10 @@
               sel.addEventListener('change', function(e) {
                 var note = document.getElementById('executor-note');
                 if (e.target.value === 'command-code') {
-                  note.innerHTML = '⚠ Requires Node.js 20+. Verify with <code>node --version</code>.';
+                  note.textContent = 'Requires Node.js 20+. Verify with node --version.';
                   note.style.color = '#f85149';
                 } else {
-                  note.innerHTML = '';
+                  note.textContent = '';
                 }
               });
             }

@@ -31,7 +31,7 @@ def test_migrates_existing_proposals_schema(tmp_path, monkeypatch):
         template_stage_cols = {r["name"] for r in db.execute("PRAGMA table_info(workflow_template_stages)").fetchall()}
         run_stage_cols = {r["name"] for r in db.execute("PRAGMA table_info(workflow_run_stages)").fetchall()}
         usage_cols = {r["name"] for r in db.execute("PRAGMA table_info(usage_records)").fetchall()}
-        assert {"goal_id", "parent_id", "assigned_agent_id", "acceptance_criteria_json", "risk_level", "estimated_cost_usd", "actual_cost_usd"} <= proposal_cols
+        assert {"goal_id", "parent_id", "assigned_agent_id", "acceptance_criteria_json", "risk_level", "estimated_cost_usd", "actual_cost_usd", "is_demo"} <= proposal_cols
         assert {"assigned_agent_id", "handoff_agent_id"} <= template_stage_cols
         assert {"assigned_agent_id", "handoff_agent_id"} <= run_stage_cols
         assert "actual_cost_usd" in usage_cols
@@ -50,7 +50,7 @@ def test_health_endpoint_bypasses_auth(tmp_path, monkeypatch):
     assert response.json() == {"status": "healthy", "database": "ok"}
 
 
-def test_existing_card_api_and_agent_goal_linking(tmp_path, monkeypatch):
+def test_existing_proposal_api_and_agent_goal_linking(tmp_path, monkeypatch):
     main = load_main(tmp_path, monkeypatch)
     client = TestClient(main.app)
 
@@ -86,6 +86,7 @@ def test_existing_card_api_and_agent_goal_linking(tmp_path, monkeypatch):
     assert response.status_code == 200
 
     detail = client.get(f"/api/proposals/{proposal_id}").json()
+    assert detail["status"] == "waiting"
     assert detail["goal_id"] == goal_id
     assert detail["assigned_agent_id"] == agent_id
     assert detail["risk_level"] == "critical"
@@ -95,13 +96,13 @@ def test_existing_card_api_and_agent_goal_linking(tmp_path, monkeypatch):
     with main.db_connect() as db:
         approvals = db.execute("SELECT title FROM approval_requests WHERE entity_type='proposal' AND entity_id=?", (proposal_id,)).fetchall()
         titles = {r["title"] for r in approvals}
-        assert "Critical-risk card requires approval" in titles
+        assert "Critical-risk proposal requires approval" in titles
         assert "Cost threshold exceeded" in titles
         events = db.execute("SELECT event_type FROM audit_events WHERE entity_type='proposal' AND entity_id=?", (proposal_id,)).fetchall()
         assert "proposal_metadata_updated" in {r["event_type"] for r in events}
 
 
-def test_cards_page_renders_cost_helpers(tmp_path, monkeypatch):
+def test_proposals_page_renders_first_use_and_settings_navigation(tmp_path, monkeypatch):
     main = load_main(tmp_path, monkeypatch)
     client = TestClient(main.app)
     client.post("/api/proposals", data={"title": "Rendered card"})
@@ -110,20 +111,20 @@ def test_cards_page_renders_cost_helpers(tmp_path, monkeypatch):
 
     assert response.status_code == 200
     assert "Rendered card" in response.text
-    assert "$0.00" in response.text
-    assert 'href="/proposals/goals"' in response.text
-    assert 'href="/proposals/agents"' in response.text
+    assert "Try demo" in response.text
+    assert 'action="/proposals"' in response.text
+    assert 'for="new-proposal-title"' in response.text
+    assert "Waiting for worker" in response.text
     assert 'href="/proposals/workflows"' in response.text
     assert 'href="/proposals/approvals"' in response.text
-    assert 'href="/proposals/budgets"' in response.text
-    assert 'href="/proposals/setup"' in response.text
+    assert 'href="/proposals/settings"' in response.text
 
 
 def test_prefixed_ops_pages_and_api_routes_work_under_proposals(tmp_path, monkeypatch):
     main = load_main(tmp_path, monkeypatch)
     client = TestClient(main.app)
 
-    for path in ["/proposals/setup", "/proposals/goals", "/proposals/agents", "/proposals/workflows", "/proposals/approvals", "/proposals/budgets"]:
+    for path in ["/proposals/settings", "/proposals/setup", "/proposals/goals", "/proposals/agents", "/proposals/workflows", "/proposals/approvals", "/proposals/budgets"]:
         response = client.get(path)
         assert response.status_code == 200, path
 
@@ -381,6 +382,7 @@ def test_approval_decision_and_existing_status_trigger(tmp_path, monkeypatch):
         approval = db.execute("SELECT status, decision_reason FROM approval_requests WHERE id=?", (approval_id,)).fetchone()
         assert approval["status"] == "approved"
         assert approval["decision_reason"] == "Looks good"
+        assert db.execute("SELECT status FROM proposals WHERE id=?", (proposal_id,)).fetchone()["status"] == "approved"
 
 
 def test_executor_type_column_exists_and_defaults_to_hermes(tmp_path, monkeypatch):
@@ -477,3 +479,100 @@ def test_dangerous_executor_triggers_approval(tmp_path, monkeypatch):
         ).fetchall()
         titles = {r["title"] for r in approvals}
         assert "Dangerous executor (Codex CLI) requires approval" in titles
+
+
+def test_browser_create_redirects_once_to_waiting_proposal(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+
+    response = client.post(
+        "/proposals",
+        data={"title": "Review onboarding", "body": "Make first use understandable"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    location = response.headers["location"]
+    assert location.startswith("/proposals/")
+    proposal_id = location.rsplit("/", 1)[1]
+    assert (tmp_path / "proposals_trigger").read_text() == proposal_id
+    with main.db_connect() as db:
+        rows = db.execute("SELECT status, is_demo FROM proposals WHERE title='Review onboarding'").fetchall()
+        assert len(rows) == 1
+        assert rows[0]["status"] == "waiting"
+        assert rows[0]["is_demo"] == 0
+
+    detail = client.get(location)
+    assert "Waiting for worker" in detail.text
+    assert "requires a configured Hermes or CLI worker" in detail.text
+    assert "analyzing" not in detail.text.lower()
+
+
+def test_demo_walkthrough_is_idempotent_and_reset_only_removes_demo_data(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    real_id = client.post("/api/proposals", data={"title": "Keep me"}).json()["id"]
+    (tmp_path / "proposals_trigger").unlink()
+
+    first = client.post("/proposals/demo", follow_redirects=False)
+    second = client.post("/proposals/demo", follow_redirects=False)
+
+    assert first.status_code == 303
+    assert second.headers["location"] == first.headers["location"]
+    demo_id = first.headers["location"].rsplit("/", 1)[1]
+    assert not (tmp_path / "proposals_trigger").exists()
+    with main.db_connect() as db:
+        assert db.execute("SELECT COUNT(*) AS n FROM proposals WHERE is_demo=1").fetchone()["n"] == 1
+        assert db.execute("SELECT COUNT(*) AS n FROM proposal_comments WHERE proposal_id=?", (demo_id,)).fetchone()["n"] == 1
+        assert db.execute("SELECT COUNT(*) AS n FROM approval_requests WHERE entity_type='proposal' AND entity_id=? AND status='pending'", (demo_id,)).fetchone()["n"] == 1
+        assert db.execute("SELECT COUNT(*) AS n FROM workflow_runs WHERE proposal_id=?", (demo_id,)).fetchone()["n"] == 1
+
+    detail = client.get(first.headers["location"])
+    assert "DEMO" in detail.text
+    assert "No worker is executed" in detail.text
+    assert "Needs decision" in detail.text
+    decision = client.post(f"/api/proposals/{demo_id}/status", data={"status": "approved"}, follow_redirects=False)
+    assert decision.status_code == 303
+    assert not (tmp_path / "proposals_trigger").exists()
+
+    reset = client.post("/proposals/demo/reset", follow_redirects=False)
+    assert reset.headers["location"] == "/proposals"
+    with main.db_connect() as db:
+        assert db.execute("SELECT COUNT(*) AS n FROM proposals WHERE is_demo=1").fetchone()["n"] == 0
+        assert db.execute("SELECT COUNT(*) AS n FROM proposals WHERE id=?", (real_id,)).fetchone()["n"] == 1
+        assert db.execute("SELECT COUNT(*) AS n FROM workflow_templates").fetchone()["n"] == 3
+        assert db.execute("SELECT COUNT(*) AS n FROM agents").fetchone()["n"] >= 6
+
+
+def test_browser_note_route_escapes_markup_and_renders_limited_formatting(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    proposal_id = client.post("/api/proposals", data={"title": "Safe notes"}).json()["id"]
+
+    response = client.post(
+        f"/proposals/{proposal_id}/notes",
+        data={"author": "user", "body": "<script>alert(1)</script> **confirmed** and `ready`"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    page = client.get(response.headers["location"]).text
+    assert "<script>alert(1)</script>" not in page
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in page
+    assert "<strong>confirmed</strong>" in page
+    assert "<code>ready</code>" in page
+
+
+def test_proposal_decision_resolves_pending_review_consistently(tmp_path, monkeypatch):
+    main = load_main(tmp_path, monkeypatch)
+    client = TestClient(main.app)
+    proposal_id = client.post("/api/proposals", data={"title": "Needs decision"}).json()["id"]
+    with main.db_connect() as db:
+        main.create_approval(db, "proposal", proposal_id, "User decision", "medium", "Review before accepting")
+        db.commit()
+
+    response = client.post(f"/api/proposals/{proposal_id}/status", data={"status": "rejected"}, follow_redirects=False)
+    assert response.status_code == 303
+    with main.db_connect() as db:
+        assert db.execute("SELECT status FROM proposals WHERE id=?", (proposal_id,)).fetchone()["status"] == "rejected"
+        assert db.execute("SELECT status FROM approval_requests WHERE entity_id=?", (proposal_id,)).fetchone()["status"] == "rejected"

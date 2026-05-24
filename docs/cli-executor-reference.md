@@ -77,7 +77,7 @@ agy --version           # verify
 ```
 Dashboard (reidar.tech/proposals)
   │
-  ├─ User creates card, assigns to agent with executor_type="codex"
+  ├─ User creates proposal, assigns to agent with executor_type="codex"
   │
   ├─ Writes ~/.hermes/proposals_trigger         → "p_abc123"
   ├─ Writes ~/.hermes/proposals_trigger_executor → {"proposal_id":"p_abc123","executor_type":"codex",...}
@@ -85,12 +85,12 @@ Dashboard (reidar.tech/proposals)
   ▼
 External Hermes agent loop
   │
-  ├─ Reads proposals_trigger → gets card ID
+  ├─ Reads proposals_trigger → gets proposal ID
   ├─ Reads proposals_trigger_executor → gets executor type
   ├─ Looks up agent from DB via GET /api/proposals/{id}/executor
   │
   ├─ If executor=hermes: spawn Hermes worker profile
-  └─ If executor=codex: spawn codex exec --full-auto "task from card body"
+  └─ If executor=codex: spawn codex exec --full-auto "task from proposal body"
 ```
 
 ### API Endpoints
@@ -112,7 +112,7 @@ Returns `"executor": null` for native Hermes agents.
 
 ### Trigger File Format
 
-`~/.hermes/proposals_trigger` — unchanged. Contains card ID or `APPROVED:<id>`.
+`~/.hermes/proposals_trigger` — unchanged. Contains proposal ID or `APPROVED:<id>`.
 
 `~/.hermes/proposals_trigger_executor` — JSON metadata (only written for non-hermes executors):
 ```json
@@ -135,7 +135,7 @@ Start at level 1. Only escalate if the task genuinely requires it AND the enviro
 
 3. **Hermes owns the lifecycle** — External CLIs are implementation lanes. Hermes always: reviews the diff, runs the tests, and calls `proposal_complete`. Never trust CLI self-report.
 
-4. **Approval gates** — Cards routed to `--yolo` executors should have `risk_level: high` or `critical` to trigger the approval policy pipeline before execution.
+4. **Approval gates** — Proposals routed to `--yolo` executors should have `risk_level: high` or `critical` to trigger the approval policy pipeline before execution.
 
 5. **Provider diversity** — Having multiple CLI options means you're not locked into one provider's reliability or pricing. The orchestrator can route based on availability and cost.
 
@@ -152,7 +152,7 @@ Start at level 1. Only escalate if the task genuinely requires it AND the enviro
 
 1. Install desired CLIs (see Installation section above)
 2. Create agents from the Setup page using the CLI templates
-3. Create a test card assigned to a CLI-delegator agent
+3. Create a test proposal assigned to a CLI-delegator agent
 4. Verify the trigger executor file is written correctly
 5. Configure the external agent loop to check `proposals_trigger_executor`
 6. Start with `--full-auto` / `-p` / `--auto` safety level

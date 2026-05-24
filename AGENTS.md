@@ -2,7 +2,7 @@
 
 ## Commands
 - Install: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
-- Dev server: `HERMES_REQUIRE_AUTH=0 .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8089 --reload`
+- Dev server: `HERMES_REQUIRE_AUTH=0 .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8089 --reload`
 - Existing launcher: `./run.sh`
 - Compile check: `.venv/bin/python -m compileall -q main.py`
 - Tests: `.venv/bin/python -m pytest -q`
@@ -13,10 +13,10 @@
 
 ## Architecture
 - `main.py` is the FastAPI app, SQLite migration layer, route layer, seed data, and small data-access helpers.
-- `templates/` contains server-rendered Jinja pages. Keep proposal cards centered around existing `/proposals` routes.
+- `templates/` contains server-rendered Jinja pages. Keep proposals centered around existing `/proposals` routes.
 - SQLite lives at `$HERMES_HOME/proposals.db`; by default this is `~/.hermes/proposals.db`.
 - New "agent operations" records are local SQLite tables only. Agent runs, costs, handoffs, approvals, and audit events are records; this app does not call paid LLM providers.
-- `~/.hermes/proposals_trigger` is an existing integration point. New card creation writes the card id; approving a card writes `APPROVED:<id>`.
+- `~/.hermes/proposals_trigger` is an existing integration point. New real proposal creation writes the proposal id; approving a real proposal writes `APPROVED:<id>`.
 
 ## CLI Executor System (Multi-Provider Orchestration)
 
@@ -36,8 +36,8 @@ The dashboard supports routing work to 7 different execution backends via the `e
 Key gotcha: `command-code` npm package produces binary `cmd`, NOT `command-code`. `kilo` npm package is `@kilocode/cli`, binary is `kilo`.
 
 ### Trigger files
-- `~/.hermes/proposals_trigger` — UNCHANGED. Contains card ID or `APPROVED:<id>`. Never repurpose.
-- `~/.hermes/proposals_trigger_executor` — JSON metadata written when a card's assigned agent has a non-hermes executor. Format: `{"proposal_id":"p_abc","agent_id":"agent_yyy","executor_type":"codex","executor_label":"Codex CLI"}`. Only exists for non-hermes executors.
+- `~/.hermes/proposals_trigger` — UNCHANGED. Contains proposal ID or `APPROVED:<id>`. Never repurpose.
+- `~/.hermes/proposals_trigger_executor` — JSON metadata written when a proposal's assigned agent has a non-hermes executor. Format: `{"proposal_id":"p_abc","agent_id":"agent_yyy","executor_type":"codex","executor_label":"Codex CLI"}`. Only exists for non-hermes executors.
 
 ### Agent template keys
 12 templates: `product_lead`, `architect`, `builder`, `reviewer`, `qa`, `cost_controller` (hermes native), plus `codex_coder`, `claude_coder`, `opencode_coder`, `agy_coder`, `commandcode_coder`, `kilo_coder` (CLI delegators).
@@ -54,7 +54,7 @@ Key gotcha: `command-code` npm package produces binary `cmd`, NOT `command-code`
 
 ### External agent loop integration
 The external Hermes agent loop should:
-1. Read `~/.hermes/proposals_trigger` for the card ID (as before)
+1. Read `~/.hermes/proposals_trigger` for the proposal ID (as before)
 2. Read `~/.hermes/proposals_trigger_executor` if it exists
 3. If executor is non-hermes: spawn the appropriate CLI instead of a Hermes worker
 4. The CLI output is reconciled by the worker profile (see the proposal executor lane workflow for the pattern)
@@ -65,8 +65,8 @@ See `docs/cli-executor-reference.md` for complete CLI installation and governanc
 ## Style
 - Prefer small helper functions in `main.py` over new framework layers until the file becomes difficult to maintain.
 - Use idempotent SQLite migrations with `CREATE TABLE IF NOT EXISTS` and `ensure_column`.
-- Keep API compatibility for existing proposal/card routes.
-- Forms should work without a bundled frontend build step. htmx is used only for lightweight polling on card detail pages.
+- Keep API compatibility for existing proposal routes.
+- Forms should work without a bundled frontend build step. htmx is available only for targeted dynamic fragments where needed.
 - Use JSON text columns for simple lists/payloads that do not need relational querying yet.
 
 ## Auth And Local Dev

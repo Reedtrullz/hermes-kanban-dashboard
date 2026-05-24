@@ -1,70 +1,137 @@
 {% extends "base.html" %}
-{% block title %}Cards - Hermes{% endblock %}
+{% block title %}Proposals - Hermes{% endblock %}
 {% block nav_cards %}is-active{% endblock %}
-{% block page_title %}Cards{% endblock %}
+{% block header %}{% endblock %}
+{% block head %}
+<style>
+  .hero-callouts { display:grid; grid-template-columns:minmax(300px,1.06fr) minmax(300px,.94fr); gap:18px; margin:31px 0 34px; }
+  .callout { display:flex; justify-content:space-between; align-items:center; gap:20px; min-height:118px; padding:20px 23px; border:1px solid #29466b; border-radius:9px; background:linear-gradient(112deg,#111c2e,#11161d); }
+  .callout h3 { font-size:16px; margin-bottom:7px; }
+  .callout p { max-width:385px; color:var(--muted); font-size:12px; line-height:1.45; }
+  .callout-worker { display:block; border-color:#534323; background:linear-gradient(112deg,#211d13,#14171b); }
+  .callout-worker .link { display:block; margin-top:10px; font-size:12px; }
+  .inbox-layout { display:grid; grid-template-columns:minmax(580px,1fr) 332px; gap:22px; align-items:start; }
+  .inbox-title { font-size:19px; font-weight:640; letter-spacing:-.03em; margin-bottom:18px; }
+  .inbox-box { border:1px solid var(--border); border-radius:9px; overflow:hidden; background:linear-gradient(115deg,#11161d,#0e1218); }
+  .tabs { display:flex; gap:0; padding:20px 20px 0; border-bottom:1px solid var(--border); margin-bottom:0; overflow-x:auto; }
+  .tab { flex:0 0 auto; color:var(--text-soft); font-size:12px; font-weight:500; padding:11px 20px 12px; text-decoration:none; border:1px solid var(--border); border-bottom-color:transparent; background:#141920; }
+  .tab:first-child { border-radius:6px 0 0 0; }
+  .tab:last-child { border-radius:0 6px 0 0; }
+  .tab.is-active { color:var(--text); border-color:var(--accent); }
+  .proposal-head, .proposal-row { display:grid; grid-template-columns:minmax(210px,1fr) 140px 100px 135px 112px; align-items:center; gap:15px; }
+  .proposal-head { height:47px; padding:0 20px; border-bottom:1px solid var(--border); color:var(--muted); font-size:10px; letter-spacing:.12em; text-transform:uppercase; }
+  .proposal-row { min-height:84px; padding:13px 20px; border-bottom:1px solid var(--border); background:transparent; text-decoration:none; }
+  .proposal-row:hover { background:var(--surface-2); }
+  .proposal-name { min-width:0; display:flex; align-items:center; gap:12px; }
+  .proposal-icon { flex:0 0 auto; width:22px; height:22px; border-radius:5px; display:grid; place-items:center; color:#b7c0cd; background:var(--surface-3); font-size:11px; }
+  .proposal-copy { min-width:0; }
+  .proposal-copy strong { display:flex; gap:8px; align-items:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:560; }
+  .proposal-copy span { display:block; color:var(--muted); font-size:11px; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .proposal-cell { color:var(--muted); font-size:11px; }
+  .row-action { justify-self:end; color:#83b2ff; border:1px solid #31558e; border-radius:6px; padding:9px 13px; font-size:12px; }
+  .guide-column .card { padding:22px; }
+  .numbered { display:grid; gap:15px; margin:20px 0 14px; }
+  .numbered div { display:grid; grid-template-columns:25px 1fr; gap:12px; font-size:12px; color:var(--text-soft); line-height:1.4; }
+  .numbered span { width:24px; height:24px; display:grid; place-items:center; border-radius:99px; color:#a5afbD; border:1px solid var(--border-strong); }
+  .new-form h3 { margin-bottom:19px; }
+  .new-form .btn { width:100%; }
+  @media (max-width:1050px) {
+    .inbox-layout { grid-template-columns:1fr; }
+    .guide-column { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  }
+  @media (max-width:760px) {
+    .hero-callouts, .guide-column { grid-template-columns:1fr; }
+    .callout { align-items:start; flex-direction:column; }
+    .inbox-layout { display:block; }
+    .proposal-head { display:none; }
+    .proposal-row { grid-template-columns:1fr; gap:9px; }
+    .row-action { justify-self:start; }
+  }
+</style>
+{% endblock %}
 {% block content %}
-<div class="panel-layout">
-  <section>
-    <p class="small muted" style="margin-bottom:16px">Proposal cards are the center of Hermes. Goals, agents, workflows, approvals, and costs attach here.</p>
-    <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center">
-      <span class="small muted">Filter:</span>
-      <select onchange="window.location=this.value" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 10px;color:var(--text);font-size:13px">
-        <option value="/proposals" {% if not executor_filter %}selected{% endif %}>All cards</option>
-        <option value="/proposals?executor=cli" {% if executor_filter == 'cli' %}selected{% endif %}>All CLI tasks</option>
-        <option disabled>──</option>
-        <option value="/proposals?executor=codex" {% if executor_filter == 'codex' %}selected{% endif %}>Codex CLI</option>
-        <option value="/proposals?executor=claude-code" {% if executor_filter == 'claude-code' %}selected{% endif %}>Claude Code CLI</option>
-        <option value="/proposals?executor=opencode" {% if executor_filter == 'opencode' %}selected{% endif %}>OpenCode CLI</option>
-        <option value="/proposals?executor=command-code" {% if executor_filter == 'command-code' %}selected{% endif %}>Command Code CLI</option>
-        <option value="/proposals?executor=kilo" {% if executor_filter == 'kilo' %}selected{% endif %}>Kilo Code CLI</option>
-        <option value="/proposals?executor=agy" {% if executor_filter == 'agy' %}selected{% endif %}>Antigravity CLI</option>
-      </select>
-      {% if executor_filter %}<span class="small muted">Showing {{ proposals|length }} result(s)</span>{% endif %}
+<section class="page-heading">
+  <div class="page-heading-row">
+    <div>
+      <h1>Proposals</h1>
+      <p>Submit an idea, review progress, and make decisions.</p>
     </div>
-    {% if proposals %}
-      {% for p in proposals %}
-      <div class="card">
-        <div class="split">
-          <div style="min-width:0">
-            <h3 style="margin-bottom:4px"><a class="link" href="/proposals/{{ p.id }}">{{ p.title }}</a></h3>
-            <div class="row small muted">
-              <span class="badge badge-{{ p.status }}">{{ PROPOSAL_LABELS[p.status] }}</span>
-              <span class="badge badge-{{ p.risk_level }}">{{ p.risk_level }}</span>
-              <span>{{ p.board }}</span>
-              <span class="reltime" data-ts="{{ p.updated_at }}"></span>
-              {% if p.top_comments %}<span>{{ p.top_comments }} review{% if p.top_comments != 1 %}s{% endif %}</span>{% endif %}
-            </div>
-            <div class="small muted" style="margin-top:6px">
-              {% if p.goal %}Goal: <a class="link" href="/proposals/goals/{{ p.goal.id }}">{{ p.goal.title }}</a>{% endif %}
-              {% if p.parent %} · Parent: <a class="link" href="/proposals/{{ p.parent.id }}">{{ p.parent.title }}</a>{% endif %}
-              {% if p.agent %} · Agent: <a class="link" href="/proposals/agents/{{ p.agent.id }}">{{ p.agent.name }}</a>{% endif %}
-              {% if not p.goal and not p.parent and not p.agent %}No links{% endif %}
-            </div>
-          </div>
-          <span class="badge">{{ money(p.cost_total) }}</span>
-        </div>
-      </div>
-      {% endfor %}
-    {% else %}
-      <div class="card empty">
-        <h3 style="margin-bottom:4px">No cards yet</h3>
-        <p class="small">Create the first card and agents can review it.</p>
-      </div>
-    {% endif %}
-  </section>
+    <a class="btn btn-primary" href="#new-proposal">+ New proposal</a>
+  </div>
+</section>
 
-  <aside>
-    <div class="inspector">
-      <div class="inspector-block">
-        <h3>New Card</h3>
-        <form action="/api/proposals" method="post">
-          <div class="field"><label>Title</label><input name="title" required autofocus placeholder="Add agent heartbeat workflow"></div>
-          <div class="field"><label>Description</label><textarea name="body" placeholder="What should be built, researched, or reviewed?"></textarea></div>
-          <div class="field"><label>Project</label><input name="board" value="default"></div>
-          <button class="btn btn-primary">Create Card</button>
-        </form>
-      </div>
+<div class="hero-callouts">
+  <section class="callout">
+    <div>
+      <h3>Start with a guided walkthrough</h3>
+      <p>Explore a demo proposal, see how decisions work, and remove it anytime.</p>
     </div>
+    <form action="/proposals/demo" method="post"><button class="btn btn-primary">Try demo</button></form>
+  </section>
+  <section class="callout callout-worker">
+    <h3>Worker required for live execution</h3>
+    <p>To run real proposals, connect a Hermes or CLI worker.</p>
+    <a class="link" href="/proposals/settings#worker">View setup guidance</a>
+  </section>
+</div>
+
+<div class="inbox-layout">
+  <section>
+    <h2 class="inbox-title">Proposal inbox</h2>
+    <div class="inbox-box">
+    <nav class="tabs" aria-label="Proposal filters">
+      <a class="tab {% if not status_filter %}is-active{% endif %}" href="/proposals">All</a>
+      <a class="tab {% if status_filter == 'waiting' %}is-active{% endif %}" href="/proposals?status=waiting">Waiting</a>
+      <a class="tab {% if status_filter == 'review' %}is-active{% endif %}" href="/proposals?status=review">In review</a>
+      <a class="tab {% if status_filter == 'decision' %}is-active{% endif %}" href="/proposals?status=decision">Needs decision</a>
+      <a class="tab {% if status_filter == 'done' %}is-active{% endif %}" href="/proposals?status=done">Done</a>
+    </nav>
+    <div class="proposal-head"><span>Proposal</span><span>Owner / Workflow</span><span>Updated</span><span>Status</span><span>Next action</span></div>
+    {% for p in proposals %}
+    <a class="proposal-row" href="/proposals/{{ p.id }}">
+      <span class="proposal-name">
+        <span class="proposal-icon">{% if p.is_demo %}D{% else %}+{% endif %}</span>
+        <span class="proposal-copy">
+          <strong>{{ p.title }}{% if p.is_demo %}<span class="badge badge-demo">DEMO</span>{% endif %}</strong>
+          <span>{{ p.body or "No outcome entered yet." }}</span>
+        </span>
+      </span>
+      <span class="proposal-cell">{{ p.agent.name if p.agent else "Unassigned" }}</span>
+      <span class="proposal-cell reltime" data-ts="{{ p.updated_at }}"></span>
+      <span>{% if p.has_pending_decision %}<span class="badge badge-decision">Needs decision</span>{% else %}<span class="badge badge-{{ p.status }}">{{ PROPOSAL_LABELS[p.status] }}</span>{% endif %}</span>
+      <span class="row-action">{% if p.has_pending_decision %}Open review{% else %}View details{% endif %}</span>
+    </a>
+    {% endfor %}
+    {% if not proposals %}
+    <div class="card empty">No proposals in this view. Submit a proposal or open the demo walkthrough.</div>
+    {% endif %}
+    </div>
+  </section>
+  <aside class="guide-column">
+    <section class="card">
+      <h3>How it works</h3>
+      <div class="numbered">
+        <div><span>1</span><p>Submit a proposal<br><small class="muted">Define the outcome.</small></p></div>
+        <div><span>2</span><p>Review and refine<br><small class="muted">Add notes and criteria.</small></p></div>
+        <div><span>3</span><p>Approve when ready<br><small class="muted">Make the decision visible.</small></p></div>
+      </div>
+      <a class="link small" href="/proposals/settings#worker">Learn more</a>
+    </section>
+    <section class="card new-form" id="new-proposal">
+      <h3>Create a proposal</h3>
+      <form action="/proposals" method="post">
+        <div class="field"><label for="new-proposal-title">Title</label><input id="new-proposal-title" name="title" required placeholder="Describe your idea"></div>
+        <div class="field"><label for="new-proposal-outcome">Outcome</label><textarea id="new-proposal-outcome" name="body" placeholder="What should happen?"></textarea></div>
+        <div class="field"><label for="new-proposal-agent">Assign to <span class="muted">(optional)</span></label>
+          <select id="new-proposal-agent" name="assigned_agent_id">
+            <option value="">Unassigned</option>
+            {% for agent in agents %}<option value="{{ agent.id }}">{{ agent.name }} - {{ agent.role_title }}</option>{% endfor %}
+          </select>
+        </div>
+        <input type="hidden" name="board" value="default">
+        <button class="btn btn-primary">Submit proposal</button>
+      </form>
+    </section>
   </aside>
 </div>
 {% endblock %}

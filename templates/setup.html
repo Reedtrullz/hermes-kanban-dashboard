@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Setup - Hermes{% endblock %}
-{% block nav_setup %}is-active{% endblock %}
+{% block nav_settings %}is-active{% endblock %}
 {% block header %}{% endblock %}
 {% block head %}
 <style>
@@ -75,7 +75,7 @@
       <form action="/api/proposals/dry-run" method="post" style="margin:0;flex:0 0 auto">
         <input type="hidden" name="agent_id" value="{{ agent.id }}">
         <input type="hidden" name="return_to" value="/proposals/setup?view=org&agent_id={{ agent.id }}">
-        <button class="btn btn-sm" title="Create a test card to verify the {{ exec }} pipeline" style="font-size:11px;padding:3px 8px">Test</button>
+        <button class="btn btn-sm" title="Create a test proposal to verify the {{ exec }} pipeline" style="font-size:11px;padding:3px 8px">Test</button>
       </form>
       {% endif %}
       </div>

@@ -11,4 +11,4 @@ if [ ! -d .venv ]; then
 fi
 
 export HERMES_REQUIRE_AUTH="${HERMES_REQUIRE_AUTH:-0}"
-exec .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8089
+exec .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8089

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ agent.name }} - Hermes{% endblock %}
-{% block nav_agents %}is-active{% endblock %}
+{% block nav_settings %}is-active{% endblock %}
 {% block header %}
 <div class="app-header">
   <div class="breadcrumb">
@@ -54,7 +54,7 @@
     </div>
 
     <div class="card">
-      <h4>Assigned Cards</h4>
+      <h4>Assigned Proposals</h4>
       {% for c in cards %}
       <div class="row small" style="margin-bottom:6px">
         <a class="link" href="/proposals/{{ c.id }}">{{ c.title }}</a>
@@ -62,7 +62,7 @@
         <span class="badge badge-{{ c.risk_level }}">{{ c.risk_level }}</span>
       </div>
       {% endfor %}
-      {% if not cards %}<p class="muted small">No assigned cards.</p>{% endif %}
+      {% if not cards %}<p class="muted small">No assigned proposals.</p>{% endif %}
     </div>
 
     <div class="card">

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Settings - Hermes{% endblock %}
+{% block nav_settings %}is-active{% endblock %}
+{% block header %}{% endblock %}
+{% block head %}
+<style>
+  .settings-grid { display:grid; grid-template-columns:repeat(2,minmax(260px,1fr)); gap:15px; margin-bottom:28px; }
+  .setting-link { text-decoration:none; transition:border-color .15s ease; }
+  .setting-link:hover { border-color:var(--border-strong); }
+  .setting-link h3 { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .setting-link p { line-height:1.55; }
+  .worker-panel { max-width:760px; }
+  .worker-panel h2 { font-size:20px; margin-bottom:12px; }
+  .worker-panel p { color:var(--text-soft); line-height:1.65; margin-bottom:15px; }
+  .worker-steps { display:grid; gap:13px; margin:18px 0 23px; }
+  .worker-steps div { display:grid; grid-template-columns:27px 1fr; gap:12px; color:var(--text-soft); font-size:13px; line-height:1.5; }
+  .worker-steps span { color:var(--accent); font-weight:700; }
+  @media (max-width:760px) { .settings-grid { grid-template-columns:1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <h1>Settings</h1>
+  <p>Configuration and setup for proposals, workflows, and workers.</p>
+</section>
+<div class="settings-grid">
+  <a class="card setting-link" href="/proposals/goals"><h3>Goals <span class="badge">{{ counts.goals }}</span></h3><p class="small muted">Organize desired outcomes and connect proposals to them.</p></a>
+  <a class="card setting-link" href="/proposals/agents"><h3>Agents <span class="badge">{{ counts.agents }}</span></h3><p class="small muted">Manage assignments, executor types, and cost information.</p></a>
+  <a class="card setting-link" href="/proposals/budgets"><h3>Budgets <span class="badge">{{ counts.budgets }}</span></h3><p class="small muted">Set cost limits and record manual usage.</p></a>
+  <a class="card setting-link" href="/proposals/setup"><h3>Organization setup <span class="badge">{{ counts.templates }} workflows</span></h3><p class="small muted">Configure reporting lines and workflow templates.</p></a>
+</div>
+<section class="card worker-panel" id="worker">
+  <h2>Worker setup</h2>
+  <p>Proposals are stored locally in SQLite. Saving a real proposal writes its id to the existing trigger file, but this dashboard does not itself execute a worker or call a paid LLM provider.</p>
+  <div class="worker-steps">
+    <div><span>1.</span><p>Use <strong>Try demo</strong> on the Proposals page to explore review and decision controls without executing anything.</p></div>
+    <div><span>2.</span><p>Configure an external Hermes worker or CLI worker to consume <code>$HERMES_HOME/proposals_trigger</code> and, when present, <code>proposals_trigger_executor</code>.</p></div>
+    <div><span>3.</span><p>When you approve a real proposal, the dashboard writes <code>APPROVED:&lt;id&gt;</code> through the existing integration.</p></div>
+  </div>
+  <form action="/proposals/demo" method="post"><button class="btn btn-primary">Open demo walkthrough</button></form>
+</section>
+{% endblock %}

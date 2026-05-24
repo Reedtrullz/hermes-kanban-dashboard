@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Approvals - Hermes{% endblock %}
+{% block title %}Reviews - Hermes{% endblock %}
 {% block nav_approvals %}is-active{% endblock %}
-{% block page_title %}Approvals{% endblock %}
+{% block page_title %}Reviews{% endblock %}
 {% block content %}
 <div class="panel-wide">
   {% for risk, items in grouped.items() %}
@@ -32,7 +32,7 @@
   {% endfor %}
 
   {% if not approvals %}
-  <div class="card empty">No approval requests. Policies automatically create requests when thresholds are hit.</div>
+  <div class="card empty">No decisions waiting. Policies automatically create review requests when thresholds are hit.</div>
   {% endif %}
 
   <div class="card">

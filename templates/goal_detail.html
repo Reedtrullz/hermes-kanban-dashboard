@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ goal.title }} - Hermes{% endblock %}
-{% block nav_goals %}is-active{% endblock %}
+{% block nav_settings %}is-active{% endblock %}
 {% block header %}
 <div class="app-header">
   <div class="breadcrumb">
@@ -33,7 +33,7 @@
     </div>
 
     <div class="card">
-      <h4>Linked Cards</h4>
+      <h4>Linked Proposals</h4>
       {% for c in cards %}
       <div class="row small" style="margin-bottom:6px">
         <a class="link" href="/proposals/{{ c.id }}">{{ c.title }}</a>
@@ -41,7 +41,7 @@
         <span class="muted">{{ money(c.cost_total) }}</span>
       </div>
       {% endfor %}
-      {% if not cards %}<p class="muted small">No linked cards.</p>{% endif %}
+      {% if not cards %}<p class="muted small">No linked proposals.</p>{% endif %}
     </div>
 
     <div class="card">
@@ -52,7 +52,7 @@
         <span class="muted">{{ a.role_title }}</span>
       </div>
       {% endfor %}
-      {% if not agents %}<p class="muted small">No assigned agents through linked cards.</p>{% endif %}
+      {% if not agents %}<p class="muted small">No assigned agents through linked proposals.</p>{% endif %}
     </div>
 
     <div class="card">

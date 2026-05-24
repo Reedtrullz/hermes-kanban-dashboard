@@ -1,18 +1,28 @@
 # Hermes Proposals Dashboard
 
-Hermes is a self-hosted, human-supervised AI agent operations dashboard built around proposal cards. Existing proposal routes remain the card/task surface, and the app adds goals, agents, workflows, approvals, budgets, manual cost tracking, and audit timelines.
+Hermes is a self-hosted, human-supervised operations dashboard built around proposals. The app adds goals, agents, workflows, reviews, budgets, manual cost tracking, and audit timelines.
 
 ## Local Setup
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-HERMES_REQUIRE_AUTH=0 .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8089 --reload
+HERMES_REQUIRE_AUTH=0 .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8089 --reload
 ```
 
 Open `http://127.0.0.1:8089/proposals`.
 
 The default SQLite database is `$HERMES_HOME/proposals.db`, or `~/.hermes/proposals.db` when `HERMES_HOME` is not set.
+
+If this repository directory is moved or renamed, recreate `.venv` before launching. Virtual environment console-script shebangs can retain the old absolute path; using `.venv/bin/python -m uvicorn` avoids that launcher issue.
+
+## First Use
+
+1. Open `/proposals` and select **Try demo** to open removable sample data. The demo never executes a worker.
+2. Review the sample proposal, add a note, and exercise **Approve** or **Request changes**.
+3. Select **Remove demo** on the demo detail page to delete only the sample records.
+4. Submit a real proposal from the inbox. It is saved as **Waiting for worker**.
+5. Configure an external Hermes or CLI worker before expecting live execution. This dashboard records work and writes trigger files; it does not itself call paid LLM providers.
 
 ## Validation
 
@@ -54,15 +64,15 @@ The playbook pulls `ghcr.io/reedtrullz/hermes-proposals-dashboard:latest`, runs 
 
 ## Agent Operations Model
 
-- Cards: existing `/proposals` records, extended with goals, parent cards, assigned agents, acceptance criteria, risk, and manual cost.
+- Proposals: `/proposals` records, extended with goals, parent proposals, assigned agents, acceptance criteria, risk, and manual cost.
 - Agents: local records with role, purpose, prompt, provider/model metadata, allowed tools, monthly budget, manager, and active/paused/disabled state.
-- Goals: outcome, success metric, priority, owner, due date, linked cards, total cost, active agents, and audit timeline.
+- Goals: outcome, success metric, priority, owner, due date, linked proposals, total cost, active agents, and audit timeline.
 - Workflows: reusable templates with run stages and explicit handoffs. Seed templates are Feature Delivery, Bug Triage, and Research.
-- Budgets: scoped to workspace, goal, project, agent, workflow, or card. Costs are estimated/manual only.
+- Budgets: scoped to workspace, goal, project, agent, workflow, or proposal. Costs are estimated/manual only.
 - Agent cost tracking: agent budget meters use current-month actual usage records. Open an agent detail page and use "Record Actual Cost" to enter provider/model, tokens, tool calls, and the real billed USD amount from a provider usage page or invoice.
-- Approvals: default policy requests approval for critical-risk cards, card costs above `$2.00`, and completing workflows with failed stages.
-- Audit trail: append-only events for card, agent, goal, workflow, approval, budget, usage, and handoff changes.
+- Reviews: default policy requests a decision for critical-risk proposals, proposal costs above `$2.00`, and completing workflows with failed stages.
+- Audit trail: append-only events for proposal, agent, goal, workflow, approval, budget, usage, and handoff changes.
 
 ## Existing Integration Points
 
-Creating a card writes its id to `$HERMES_HOME/proposals_trigger`. Approving a card writes `APPROVED:<id>`. Keep this behavior intact for external Hermes agent loops.
+Creating a real proposal writes its id to `$HERMES_HOME/proposals_trigger`. Approving a proposal writes `APPROVED:<id>`. Demo proposals do not write trigger files. Keep this behavior intact for external Hermes agent loops.

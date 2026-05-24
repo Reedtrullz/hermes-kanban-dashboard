@@ -1,25 +1,56 @@
 {% extends "base.html" %}
 {% block title %}{{ proposal.title }} - Hermes{% endblock %}
 {% block nav_cards %}is-active{% endblock %}
-{% block header %}
-<div class="app-header">
-  <div class="breadcrumb">
-    <a href="/proposals">Cards</a>
-    <span>›</span>
-    <a href="/proposals/{{ proposal.id }}" style="color:var(--text)">{{ proposal.title }}</a>
-  </div>
-</div>
+{% block header %}{% endblock %}
+{% block head %}
+<style>
+  .detail-top { margin-bottom:30px; }
+  .detail-breadcrumb { display:flex; gap:10px; align-items:center; color:var(--muted); font-size:12px; margin-bottom:22px; }
+  .detail-breadcrumb a { text-decoration:none; }
+  .detail-breadcrumb a:hover { color:var(--text); }
+  .detail-heading { display:flex; justify-content:space-between; gap:22px; align-items:start; }
+  .detail-heading h1 { margin:9px 0 11px; font-size:31px; letter-spacing:-.055em; font-weight:690; }
+  .detail-description { color:var(--text-soft); font-size:14px; margin:14px 0 0; line-height:1.55; }
+  .decision-actions { display:flex; gap:10px; padding-top:32px; }
+  .detail-layout { display:grid; grid-template-columns:minmax(560px,1fr) 375px; gap:30px; align-items:start; }
+  .detail-card { padding:24px; margin-bottom:17px; }
+  .detail-card h2 { font-size:17px; font-weight:620; margin-bottom:18px; }
+  .outcome { margin-bottom:23px; color:var(--text-soft); line-height:1.6; font-size:14px; }
+  .checklist { display:grid; gap:14px; }
+  .checklist div { display:flex; gap:11px; color:var(--text-soft); font-size:13px; align-items:center; }
+  .checkmark { width:19px; height:19px; border:2px solid #707a88; border-radius:2px; flex:0 0 auto; }
+  .review-note { background:#0b0e12; border:1px solid var(--border); border-radius:7px; padding:15px 16px; margin-bottom:20px; }
+  .review-author { display:flex; gap:9px; align-items:center; color:var(--text); font-size:12px; margin-bottom:11px; }
+  .avatar { width:25px; height:25px; display:grid; place-items:center; border-radius:50%; background:var(--surface-3); color:var(--text-soft); font-weight:700; }
+  .formatted p { margin:0 0 7px; }
+  .formatted p:last-child { margin-bottom:0; }
+  .formatted ul { margin:7px 0 0 19px; }
+  .note-form { display:flex; align-items:end; gap:9px; }
+  .note-form .field { flex:1; margin-bottom:0; }
+  .note-form textarea { min-height:53px; height:53px; }
+  .note-form .btn { min-height:53px; }
+  .side-panel { padding:20px; margin-bottom:16px; }
+  .side-panel h3 { font-size:15px; font-weight:620; margin-bottom:11px; }
+  .side-panel p { color:var(--muted); font-size:12px; line-height:1.55; margin-bottom:13px; }
+  .facts { display:grid; gap:15px; }
+  .fact label { display:block; margin-bottom:5px; color:var(--muted); font-size:10px; letter-spacing:.11em; text-transform:uppercase; }
+  .fact p { margin:0; color:var(--text-soft); font-size:13px; }
+  details { border-top:1px solid var(--border); margin-top:17px; padding-top:15px; }
+  summary { cursor:pointer; color:var(--text-soft); font-size:12px; margin-bottom:14px; }
+  @media (max-width:980px) {
+    .detail-layout { grid-template-columns:1fr; }
+    .detail-heading { flex-direction:column; }
+    .decision-actions { padding-top:0; }
+  }
+  @media (max-width:760px) {
+    .decision-actions { width:100%; }
+    .decision-actions form { flex:1; }
+    .decision-actions .btn { width:100%; }
+    .note-form { display:block; }
+    .note-form .field { margin-bottom:12px; }
+  }
+</style>
 {% endblock %}
 {% block content %}
-<div id="proposal-content" hx-get="/api/proposals/{{ proposal.id }}/fragment" hx-trigger="every 5s" hx-swap="outerHTML">
-  {% include "_proposal_detail_fragment.html" %}
-</div>
-<script>
-document.addEventListener('focusin',function(e){
-  if(e.target.closest('form')) document.getElementById('proposal-content').setAttribute('hx-trigger','manual');
-});
-document.addEventListener('focusout',function(e){
-  if(e.target.closest('form')) document.getElementById('proposal-content').setAttribute('hx-trigger','every 5s');
-});
-</script>
+{% include "_proposal_detail_fragment.html" %}
 {% endblock %}
