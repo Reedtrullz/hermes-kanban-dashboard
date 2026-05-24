@@ -6,14 +6,14 @@
 - Existing launcher: `./run.sh`
 - Compile check: `.venv/bin/python -m compileall -q main.py`
 - Tests: `.venv/bin/python -m pytest -q`
-- Docker build: `docker build -t hermes-kanban-dashboard .`
+- Docker build: `docker build -t hermes-proposals-dashboard .`
 - Compose self-host: copy `.env.example` to `.env`, edit secrets, then `docker compose up -d --build`
 - Ansible syntax: `ansible-playbook ansible-playbook.yml --syntax-check`
 - VPS deploy: `ansible-playbook ansible-playbook.yml`
 
 ## Architecture
 - `main.py` is the FastAPI app, SQLite migration layer, route layer, seed data, and small data-access helpers.
-- `templates/` contains server-rendered Jinja pages. Keep kanban cards centered around existing `/proposals` routes.
+- `templates/` contains server-rendered Jinja pages. Keep proposal cards centered around existing `/proposals` routes.
 - SQLite lives at `$HERMES_HOME/proposals.db`; by default this is `~/.hermes/proposals.db`.
 - New "agent operations" records are local SQLite tables only. Agent runs, costs, handoffs, approvals, and audit events are records; this app does not call paid LLM providers.
 - `~/.hermes/proposals_trigger` is an existing integration point. New card creation writes the card id; approving a card writes `APPROVED:<id>`.
@@ -57,8 +57,8 @@ The external Hermes agent loop should:
 1. Read `~/.hermes/proposals_trigger` for the card ID (as before)
 2. Read `~/.hermes/proposals_trigger_executor` if it exists
 3. If executor is non-hermes: spawn the appropriate CLI instead of a Hermes worker
-4. The CLI output is reconciled by the worker profile (see `kanban-codex-lane` skill for the pattern)
-5. After the CLI finishes, Hermes reviews the diff, runs tests, and calls `kanban_complete`
+4. The CLI output is reconciled by the worker profile (see the proposal executor lane workflow for the pattern)
+5. After the CLI finishes, Hermes reviews the diff, runs tests, and calls `proposal_complete`
 
 See `docs/cli-executor-reference.md` for complete CLI installation and governance documentation.
 

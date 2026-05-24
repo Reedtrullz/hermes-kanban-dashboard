@@ -1,7 +1,7 @@
 services:
-  hermes-kanban-dashboard:
+  hermes-proposals-dashboard:
     build: .
-    image: hermes-kanban-dashboard:local
+    image: hermes-proposals-dashboard:local
     ports:
       - "8089:8089"
     env_file:

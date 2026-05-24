@@ -540,7 +540,7 @@ async def create_dry_run_proposal(agent_id: str = Form(...), return_to: str = Fo
             return JSONResponse({"error": "agent uses native Hermes, no dry-run needed"}, status_code=400)
 
     title = f"[DRY-RUN] Test {EXECUTOR_LABELS.get(executor_type, executor_type)} pipeline"
-    body = f"Dry-run verification for agent '{agent['name']}' ({executor_type}).\n\nThis card verifies the full pipeline: trigger file → executor spawn → diff review → test run → kanban_complete.\n\nNo production changes should be made. Expected output: 'DRY_RUN_OK'."
+    body = f"Dry-run verification for agent '{agent['name']}' ({executor_type}).\n\nThis card verifies the full pipeline: trigger file -> executor spawn -> diff review -> test run -> proposal_complete.\n\nNo production changes should be made. Expected output: 'DRY_RUN_OK'."
 
     pid = make_id("p")
     now = ts()

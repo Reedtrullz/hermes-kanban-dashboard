@@ -131,9 +131,9 @@ Start at level 1. Only escalate if the task genuinely requires it AND the enviro
 
 1. **Per-agent cost budgets** — Each CLI delegator template has a `monthly_budget_usd`. The dashboard tracks actual vs budget. Set alerts before giving `--yolo` access.
 
-2. **Worktree isolation** — Always spawn external CLIs in `git worktree` branches. Never in the main checkout. The `kanban-codex-lane` skill documents this pattern for Codex; same principles apply to all CLIs.
+2. **Worktree isolation** — Always spawn external CLIs in `git worktree` branches. Never in the main checkout. The proposal executor lane workflow documents this pattern for Codex; same principles apply to all CLIs.
 
-3. **Hermes owns the lifecycle** — External CLIs are implementation lanes. Hermes always: reviews the diff, runs the tests, and calls `kanban_complete`. Never trust CLI self-report.
+3. **Hermes owns the lifecycle** — External CLIs are implementation lanes. Hermes always: reviews the diff, runs the tests, and calls `proposal_complete`. Never trust CLI self-report.
 
 4. **Approval gates** — Cards routed to `--yolo` executors should have `risk_level: high` or `critical` to trigger the approval policy pipeline before execution.
 

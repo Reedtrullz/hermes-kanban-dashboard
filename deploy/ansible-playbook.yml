@@ -1,10 +1,10 @@
-- name: Deploy Kanban Dashboard proxy config
+- name: Deploy Proposals Dashboard proxy config
   hosts: vps
   become: yes
   gather_facts: no
 
   vars:
-    domain: kanban.reidar.tech
+    domain: reidar.tech
     proxy_port: 8089
     caddyfile: /etc/caddy/Caddyfile
 
@@ -18,19 +18,25 @@
       set_fact:
         caddy_content: "{{ _caddy.content | b64decode }}"
 
-    - name: Check if kanban block already exists
+    - name: Check if proposals block already exists
       set_fact:
-        kanban_exists: "{{ 'kanban.reidar.tech' in caddy_content }}"
+        proposals_exists: "{{ 'Hermes Proposals Dashboard' in caddy_content }}"
 
-    - name: Add kanban server block to Caddyfile
+    - name: Add proposals route handlers to Caddyfile
       blockinfile:
         path: "{{ caddyfile }}"
-        marker: "# {mark} Hermes Kanban Dashboard (managed by Ansible)"
+        insertafter: "^{{ domain | regex_escape }}\\s*\\{"
+        marker: "  # {mark} Hermes Proposals Dashboard (managed by Ansible)"
         block: |
-          kanban.reidar.tech {
-            reverse_proxy localhost:{{ proxy_port }}
-          }
-        insertafter: EOF
+            handle /proposals* {
+              reverse_proxy localhost:{{ proxy_port }}
+            }
+            handle /api/proposals* {
+              reverse_proxy localhost:{{ proxy_port }}
+            }
+            handle /api/agents* {
+              reverse_proxy localhost:{{ proxy_port }}
+            }
         mode: "0644"
       register: _caddy_update
 

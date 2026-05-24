@@ -54,7 +54,7 @@ def test_existing_card_api_and_agent_goal_linking(tmp_path, monkeypatch):
     main = load_main(tmp_path, monkeypatch)
     client = TestClient(main.app)
 
-    created = client.post("/api/proposals", data={"title": "Build agent ops", "body": "Keep kanban central", "board": "default"}).json()
+    created = client.post("/api/proposals", data={"title": "Build agent ops", "body": "Keep proposals central", "board": "default"}).json()
     proposal_id = created["id"]
     assert (tmp_path / "proposals_trigger").read_text() == proposal_id
 
@@ -400,9 +400,11 @@ def test_create_codex_agent_from_template_has_correct_executor(tmp_path, monkeyp
     assert resp.status_code == 303
     agent_id = resp.headers["location"].split("agent_id=", 1)[1]
     with main.db_connect() as db:
-        agent = db.execute("SELECT executor_type, provider, model_name FROM agents WHERE id=?", (agent_id,)).fetchone()
+        agent = db.execute("SELECT executor_type, provider, model_name, system_prompt, tools_allowed_json FROM agents WHERE id=?", (agent_id,)).fetchone()
         assert agent["executor_type"] == "codex"
         assert agent["provider"] == "openai"
+        assert "proposal_complete" in agent["system_prompt"]
+        assert main.loads(agent["tools_allowed_json"], []) == ["comment", "proposal_complete", "proposal_heartbeat", "proposal_block"]
 
 
 def test_executor_api_endpoint_returns_null_for_hermes_agent(tmp_path, monkeypatch):

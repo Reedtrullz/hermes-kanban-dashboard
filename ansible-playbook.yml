@@ -1,4 +1,4 @@
-- name: Deploy Hermes Kanban Dashboard to VPS
+- name: Deploy Hermes Proposals Dashboard to VPS
   hosts: vps
   gather_facts: false
   vars:
@@ -107,11 +107,18 @@
       become: true
       blockinfile:
         path: "{{ caddyfile }}"
-        marker: "# {mark} ANSIBLE MANAGED - Hermes Kanban Dashboard"
+        insertafter: "^{{ domain | regex_escape }}\\s*\\{"
+        marker: "  # {mark} ANSIBLE MANAGED - Hermes Proposals Dashboard"
         block: |
-          {{ domain }} {
-            reverse_proxy localhost:{{ host_port }}
-          }
+            handle /proposals* {
+              reverse_proxy localhost:{{ host_port }}
+            }
+            handle /api/proposals* {
+              reverse_proxy localhost:{{ host_port }}
+            }
+            handle /api/agents* {
+              reverse_proxy localhost:{{ host_port }}
+            }
         create: false
         mode: "0644"
       register: caddy_update

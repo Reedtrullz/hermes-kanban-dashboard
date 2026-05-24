@@ -248,5 +248,5 @@ hermes cron remove 128a96f56ad0
 
 **Verification:**
 - `git diff --stat` shows all changed files
-- Service restarted: `launchctl stop/start com.reedtrullz.kanban-dashboard`
+- Service restarted: `launchctl stop/start com.reedtrullz.proposals-dashboard`
 - Create test proposal → see "Analyzing..." → agents comment within seconds → timestamps relative → comments colorful

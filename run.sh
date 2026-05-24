@@ -1,8 +1,8 @@
 #!/bin/bash
-# Start Hermes Kanban Dashboard
+# Start Hermes Proposals Dashboard
 set -e
 
-cd /Users/reidar/Projectos/hermes-kanban-dashboard
+cd /Users/reidar/Projectos/hermes-proposals-dashboard
 
 # Ensure deps are installed
 if [ ! -d .venv ]; then

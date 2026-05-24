@@ -1,6 +1,6 @@
-# Hermes Kanban Dashboard
+# Hermes Proposals Dashboard
 
-Hermes is a self-hosted, human-supervised AI agent operations dashboard built around kanban cards. Existing proposal routes remain the card/task surface, and the app adds goals, agents, workflows, approvals, budgets, manual cost tracking, and audit timelines.
+Hermes is a self-hosted, human-supervised AI agent operations dashboard built around proposal cards. Existing proposal routes remain the card/task surface, and the app adds goals, agents, workflows, approvals, budgets, manual cost tracking, and audit timelines.
 
 ## Local Setup
 
@@ -19,7 +19,7 @@ The default SQLite database is `$HERMES_HOME/proposals.db`, or `~/.hermes/propos
 ```bash
 .venv/bin/python -m compileall -q main.py
 .venv/bin/python -m pytest -q
-docker build -t hermes-kanban-dashboard .
+docker build -t hermes-proposals-dashboard .
 ```
 
 ## Self-Hosting
@@ -50,7 +50,7 @@ Deploy:
 ansible-playbook ansible-playbook.yml
 ```
 
-The playbook pulls `ghcr.io/reedtrullz/hermes-kanban-dashboard:latest`, runs it on `127.0.0.1:8089`, persists `$HERMES_HOME` in the `hermes_kanban_data` Docker volume, checks `/health`, updates the `kanban.reidar.tech` Caddy block, and reloads Caddy. If the new container fails health checks and a previous image exists, it rolls back.
+The playbook pulls `ghcr.io/reedtrullz/hermes-proposals-dashboard:latest`, runs it on `127.0.0.1:8089`, persists `$HERMES_HOME` in the `hermes_proposals_data` Docker volume, checks `/health`, updates the `reidar.tech/proposals` Caddy handlers, and reloads Caddy. If the new container fails health checks and a previous image exists, it rolls back.
 
 ## Agent Operations Model
 
