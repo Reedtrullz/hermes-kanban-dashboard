@@ -35,6 +35,16 @@ PROPOSAL_LABELS = {
     "implemented": "Done",
     "rejected": "Rejected",
 }
+EVENT_LABELS = {
+    "demo_proposal_created": "Demo proposal created",
+    "proposal_created": "Proposal submitted",
+    "comment_added": "Review note added",
+    "approval_requested": "Decision requested",
+    "workflow_started": "Workflow started",
+    "proposal_status_changed": "Proposal status updated",
+    "approval_approved": "Proposal approved",
+    "approval_rejected": "Changes requested",
+}
 PROJECT_STATUSES = ["active", "paused", "completed", "archived"]
 RISK_LEVELS = ["low", "medium", "high", "critical"]
 AGENT_STATUSES = ["active", "paused", "disabled"]
@@ -1114,6 +1124,18 @@ def enrich_proposals(db: sqlite3.Connection, query: str, params: tuple[Any, ...]
         p["agent"] = row(db.execute("SELECT id, name, role_title, status FROM agents WHERE id=?", (p.get("assigned_agent_id"),))) if p.get("assigned_agent_id") else None
         p["parent"] = row(db.execute("SELECT id, title FROM proposals WHERE id=?", (p.get("parent_id"),))) if p.get("parent_id") else None
         p["project"] = row(db.execute("SELECT id, name FROM projects WHERE id=?", (p.get("board"),))) if p.get("board") != "default" else None
+        p["workflow"] = row(
+            db.execute(
+                """
+                SELECT wt.name
+                FROM workflow_runs wr
+                JOIN workflow_templates wt ON wt.id=wr.template_id
+                WHERE wr.proposal_id=?
+                ORDER BY wr.updated_at DESC LIMIT 1
+                """,
+                (p["id"],),
+            )
+        )
         p["criteria"] = loads(p.get("acceptance_criteria_json"), []) or []
         p["cost_total"] = card_cost(db, p["id"])
         p["has_pending_decision"] = bool(
@@ -1290,6 +1312,7 @@ def get_executor_for_proposal(db: sqlite3.Connection, proposal_id: str) -> dict[
 def template_context(extra: dict[str, Any] | None = None) -> dict[str, Any]:
     base = {
         "PROPOSAL_LABELS": PROPOSAL_LABELS,
+        "EVENT_LABELS": EVENT_LABELS,
         "RISK_LEVELS": RISK_LEVELS,
         "AGENT_STATUSES": AGENT_STATUSES,
         "GOAL_STATUSES": GOAL_STATUSES,

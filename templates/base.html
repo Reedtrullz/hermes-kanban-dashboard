@@ -7,43 +7,55 @@
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <style>
     :root {
-      --bg:#080a0d; --sidebar:#0b0e12; --surface:#10141a; --surface-2:#151a22;
-      --surface-3:#1b212b; --border:#222936; --border-strong:#30394a;
-      --text:#e7eaf0; --text-soft:#bdc5d1; --muted:#758092; --accent:#448cff;
-      --accent-soft:#111d33; --green:#41b979; --yellow:#e2ad57; --red:#e0706f; --purple:#ac89ef;
+      --bg:#080d13; --sidebar:#080d12; --surface:#101720; --surface-2:#151d27;
+      --surface-3:#1a2430; --border:#27313c; --border-strong:#394654;
+      --text:#eef2f7; --text-soft:#c4cbd5; --muted:#8792a1; --accent:#397ff0;
+      --accent-bright:#4c8dff; --accent-soft:#132744; --green:#54c982; --yellow:#f0ac31; --red:#e47770; --purple:#ae8cef;
     }
     * { box-sizing:border-box; }
     html, body { margin:0; min-height:100%; }
-    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; }
+    body { background:radial-gradient(circle at 82% 6%,rgba(50,80,121,.08),transparent 31%),var(--bg); color:var(--text); font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; }
     a { color:inherit; }
     h1,h2,h3,h4,p { margin:0; }
-    .app-shell { display:grid; grid-template-columns:238px minmax(0,1fr); min-height:100vh; }
-    .app-sidebar { position:sticky; top:0; height:100vh; display:flex; flex-direction:column; gap:28px; padding:31px 21px 20px; background:var(--sidebar); border-right:1px solid var(--border); }
-    .app-logo { font-size:25px; line-height:1; font-weight:760; letter-spacing:-.05em; }
-    .nav-list { display:grid; gap:8px; }
-    .nav-item { display:flex; align-items:center; gap:13px; height:41px; padding:0 15px; border-radius:7px; color:#aab4c2; font-size:14px; text-decoration:none; }
+    .app-shell { display:grid; grid-template-columns:239px minmax(0,1fr); min-height:100vh; }
+    .app-sidebar { position:sticky; top:0; height:100vh; display:flex; flex-direction:column; gap:29px; padding:27px 15px 20px; background:linear-gradient(180deg,#080d13,#090e13); border-right:1px solid var(--border); }
+    .app-logo { display:flex; align-items:center; gap:13px; padding:0 10px; font-size:24px; line-height:1; font-weight:680; letter-spacing:-.055em; }
+    .brand-mark { width:26px; height:26px; color:var(--accent-bright); }
+    .nav-list { display:grid; gap:8px; padding-top:4px; }
+    .nav-item { display:flex; align-items:center; gap:14px; height:49px; padding:0 14px; border-radius:8px; color:#b7c0cc; font-size:15px; text-decoration:none; }
     .nav-item:hover { background:var(--surface); color:var(--text); }
-    .nav-item.is-active { color:#e6f0ff; background:#10213c; }
-    .nav-icon { width:19px; color:#8c97a6; font-size:14px; text-align:center; }
-    .nav-item.is-active .nav-icon { color:var(--accent); }
-    .nav-footer { margin-top:auto; border:1px solid var(--border); border-radius:9px; padding:14px; background:var(--surface); }
-    .nav-footer strong { font-size:12px; display:block; margin-bottom:5px; }
-    .nav-footer p { font-size:11px; line-height:1.5; color:var(--muted); margin-bottom:10px; }
-    .app-main { min-width:0; }
+    .nav-item.is-active { color:#eef5ff; background:linear-gradient(105deg,#112741,#163156); border:1px solid #1e477c; }
+    .nav-icon { width:20px; height:20px; color:#9ea8b7; display:grid; place-items:center; }
+    .nav-icon svg { width:20px; height:20px; }
+    .nav-item.is-active .nav-icon { color:#a8ccff; }
+    .nav-divider { height:1px; margin:1px 5px 0; background:var(--border); }
+    .nav-footer { margin-top:auto; }
+    .worker-summary { border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:17px 12px; margin-bottom:14px; }
+    .worker-summary strong { display:flex; align-items:center; gap:10px; font-size:12px; margin-bottom:7px; font-weight:520; }
+    .worker-dot { width:10px; height:10px; border-radius:50%; background:var(--yellow); }
+    .worker-summary p { font-size:11.5px; line-height:1.5; color:var(--muted); margin-bottom:9px; }
+    .workspace-user { display:flex; align-items:center; gap:12px; padding:0 10px; color:var(--text-soft); font-size:14px; }
+    .workspace-avatar { width:39px; height:39px; border-radius:50%; display:grid; place-items:center; background:linear-gradient(135deg,#347ce7,#173765); font-weight:700; color:#eef5ff; }
+    .workspace-user small { display:block; color:var(--muted); font-size:11px; margin-top:3px; }
+    .app-main { display:flex; flex-direction:column; min-width:0; }
+    .utility-bar { height:63px; border-bottom:1px solid var(--border); display:flex; justify-content:flex-end; align-items:center; gap:18px; padding:0 32px; color:var(--text-soft); font-size:14px; }
+    .utility-item { display:inline-flex; align-items:center; gap:9px; color:var(--text-soft); text-decoration:none; }
+    .utility-item svg { height:19px; width:19px; color:#bfc8d4; }
+    .utility-separator { width:1px; height:24px; background:var(--border); }
     .app-header { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:32px 42px 0; }
     .app-header h2 { font-size:31px; letter-spacing:-.055em; font-weight:700; }
     .breadcrumb { display:flex; align-items:center; gap:9px; color:var(--muted); font-size:13px; }
     .breadcrumb a { text-decoration:none; }
     .breadcrumb a:hover { color:var(--text); }
-    .app-body { padding:34px 34px 44px; }
+    .app-body { width:100%; max-width:1380px; padding:33px 34px 44px; }
     .page-heading { margin-bottom:29px; }
-    .page-heading h1 { font-size:32px; font-weight:690; letter-spacing:-.06em; margin-bottom:8px; }
-    .page-heading p { color:var(--muted); font-size:14px; line-height:1.55; }
+    .page-heading h1 { font-size:39px; font-weight:650; letter-spacing:-.065em; margin-bottom:8px; }
+    .page-heading p { color:var(--text-soft); font-size:15px; line-height:1.55; }
     .page-heading-row { display:flex; justify-content:space-between; align-items:start; gap:24px; }
     .panel-layout { display:grid; grid-template-columns:minmax(0,1fr) 325px; gap:24px; align-items:start; }
     .panel-wide { display:grid; gap:16px; }
     .list-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(285px,1fr)); gap:14px; }
-    .card, .inspector { background:linear-gradient(115deg,#12171e,#0f1319); border:1px solid var(--border); border-radius:9px; padding:19px; margin-bottom:14px; }
+    .card, .inspector { background:linear-gradient(115deg,#111820,#0f151c); border:1px solid var(--border); border-radius:9px; padding:19px; margin-bottom:14px; }
     .card h3, .inspector h3 { font-size:16px; margin-bottom:8px; }
     .card h4 { color:var(--muted); text-transform:uppercase; font-size:10px; letter-spacing:.14em; margin-bottom:13px; }
     .card-inset { background:var(--bg); }
@@ -65,7 +77,8 @@
     .badge-implemented, .badge-paused, .badge-running { color:var(--purple); background:#211b30; border-color:#34294d; }
     .badge-rejected, .badge-disabled, .badge-high, .badge-critical, .badge-failed, .badge-blocked { color:var(--red); background:#2b191c; border-color:#50292c; }
     .badge-demo { font-size:10px; letter-spacing:.13em; color:#a9b5c5; background:transparent; }
-    .btn { min-height:39px; display:inline-flex; justify-content:center; align-items:center; gap:8px; border:1px solid var(--border-strong); border-radius:6px; background:var(--surface-2); color:var(--text); padding:8px 16px; font:500 13px inherit; text-decoration:none; cursor:pointer; }
+    .btn { min-height:42px; display:inline-flex; justify-content:center; align-items:center; gap:9px; border:1px solid var(--border-strong); border-radius:6px; background:var(--surface-2); color:var(--text); padding:8px 17px; font:500 14px inherit; text-decoration:none; cursor:pointer; }
+    .btn svg { width:18px; height:18px; }
     .btn:hover { border-color:#465163; background:var(--surface-3); }
     .btn-primary { border-color:var(--accent); background:var(--accent); color:white; }
     .btn-primary:hover { background:#5b9aff; border-color:#5b9aff; }
@@ -114,7 +127,7 @@
       .app-logo { font-size:22px; }
       .nav-list { display:flex; gap:5px; overflow:auto; }
       .nav-item { flex:0 0 auto; padding:0 12px; }
-      .nav-footer { display:none; }
+      .nav-footer, .utility-bar { display:none; }
       .app-header, .app-body { padding-left:17px; padding-right:17px; }
       .app-header { padding-top:23px; }
       .app-body { padding-top:22px; }
@@ -127,22 +140,34 @@
 <body>
 <div class="app-shell">
   <aside class="app-sidebar">
-    <div class="app-logo">Hermes</div>
+    <div class="app-logo">
+      <svg class="brand-mark" viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="M3 5.5 13.2 10v5L3 10.6V5.5Zm0 7.6 10.2 4.4v5L3 18.2v-5.1ZM25 5.5 14.8 10v5L25 10.6V5.5Zm0 7.6-10.2 4.4v5L25 18.2v-5.1Z" fill="currentColor"/></svg>
+      <span>Hermes</span>
+    </div>
     <nav class="nav-list" aria-label="Primary navigation">
-      <a class="nav-item {% block nav_cards %}{% endblock %}" href="/proposals"><span class="nav-icon">+</span>Proposals</a>
-      <a class="nav-item {% block nav_projects %}{% endblock %}" href="/proposals/projects"><span class="nav-icon">[]</span>Projects</a>
-      <a class="nav-item {% block nav_approvals %}{% endblock %}" href="/proposals/approvals"><span class="nav-icon">o</span>Reviews</a>
-      <a class="nav-item {% block nav_workflows %}{% endblock %}" href="/proposals/workflows"><span class="nav-icon">~</span>Workflows</a>
-      <a class="nav-item {% block nav_settings %}{% endblock %}" href="/proposals/settings"><span class="nav-icon">#</span>Settings</a>
+      <a class="nav-item {% block nav_cards %}{% endblock %}" href="/proposals"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M7 3.5h8l3 3v14H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7"/><path d="M14.5 3.5v4h4M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>Proposals</a>
+      <a class="nav-item {% block nav_projects %}{% endblock %}" href="/proposals/projects"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5h6l2 2h8v10H4v-12Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span>Projects</a>
+      <a class="nav-item {% block nav_approvals %}{% endblock %}" href="/proposals/approvals"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6.5a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H10l-4.5 3v-4.2A3 3 0 0 1 5 13.5v-7Z" stroke="currentColor" stroke-width="1.7"/></svg></span>Reviews</a>
+      <a class="nav-item {% block nav_workflows %}{% endblock %}" href="/proposals/workflows"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="5" cy="18" r="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="19" cy="18" r="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5v4m0 0H5v4m7-4h7v4" stroke="currentColor" stroke-width="1.7"/></svg></span>Workflows</a>
+      <span class="nav-divider" aria-hidden="true"></span>
+      <a class="nav-item {% block nav_settings %}{% endblock %}" href="/proposals/settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" stroke="currentColor" stroke-width="1.7"/><path d="m18 13.5 2 1.2-2 3.4-2.1-1a7 7 0 0 1-1.8 1v2.4h-4v-2.4a7 7 0 0 1-1.8-1l-2.1 1-2-3.4 2-1.2a7 7 0 0 1 0-2.1l-2-1.2 2-3.4 2.1 1a7 7 0 0 1 1.8-1V4.5h4v2.3a7 7 0 0 1 1.8 1l2.1-1 2 3.4-2 1.2a7 7 0 0 1 0 2.1Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span>Settings</a>
     </nav>
     <div class="nav-footer">
-      <strong>Execution setup</strong>
-      <p>Live execution requires an external Hermes or CLI worker.</p>
-      <a class="link small" href="/proposals/settings#worker">View setup guidance</a>
+      <div class="worker-summary">
+        <strong><span class="worker-dot"></span>Worker setup required</strong>
+        <p>Configure Hermes or a CLI worker before expecting live execution.</p>
+        <a class="link small" href="/proposals/settings#worker">View connection guide</a>
+      </div>
+      <div class="workspace-user"><span class="workspace-avatar">H</span><span>Hermes<small>Local workspace</small></span></div>
     </div>
     {% block sidebar_extra %}{% endblock %}
   </aside>
   <main class="app-main">
+    <div class="utility-bar">
+      <a class="utility-item" href="/proposals/settings#worker"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9.7 9a2.5 2.5 0 0 1 4.8 1c0 2-2.5 2.1-2.5 3.8M12 17.1v.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Help</a>
+      <span class="utility-separator"></span>
+      <span class="utility-item"><svg viewBox="0 0 24 24" fill="none"><path d="M19 15.6A8 8 0 0 1 8.4 5a8.3 8.3 0 1 0 10.6 10.6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Dark</span>
+    </div>
     {% block header %}
     <header class="app-header">
       <h2>{% block page_title %}{% endblock %}</h2>

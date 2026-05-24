@@ -114,6 +114,8 @@ def test_proposals_page_renders_first_use_and_settings_navigation(tmp_path, monk
     assert response.status_code == 200
     assert "Rendered card" in response.text
     assert "Try demo" in response.text
+    assert "Submit work for review, track decisions, and connect execution when ready." in response.text
+    assert "Live execution needs setup" in response.text
     assert 'action="/proposals"' in response.text
     assert 'for="new-proposal-title"' in response.text
     assert "Waiting for worker" in response.text
@@ -534,6 +536,9 @@ def test_demo_walkthrough_is_idempotent_and_reset_only_removes_demo_data(tmp_pat
     assert "DEMO" in detail.text
     assert "No worker is executed" in detail.text
     assert "Needs decision" in detail.text
+    assert "Activity timeline" in detail.text
+    assert "Decision requested" in detail.text
+    assert "Feature Delivery" in client.get("/proposals").text
     decision = client.post(f"/api/proposals/{demo_id}/status", data={"status": "approved"}, follow_redirects=False)
     assert decision.status_code == 303
     assert not (tmp_path / "proposals_trigger").exists()

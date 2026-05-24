@@ -1,28 +1,28 @@
 <div id="proposal-content">
   <header class="detail-top">
-    <div class="detail-breadcrumb"><a href="/proposals">Proposals</a><span>/</span><span>Review</span></div>
+    <div class="detail-breadcrumb"><a href="/proposals">Proposals</a><span>/</span><span>{{ proposal.title }}</span></div>
     <div class="detail-heading">
       <div>
         {% if proposal.is_demo %}<span class="badge badge-demo">DEMO</span>{% endif %}
-        <h1>{{ proposal.title }}</h1>
-        <div class="row">
+        <div class="detail-title-row">
+          <h1>{{ proposal.title }}</h1>
           {% if proposal.has_pending_decision %}
           <span class="badge badge-decision">Needs decision</span>
           {% else %}
           <span class="badge badge-{{ proposal.status }}">{{ PROPOSAL_LABELS[proposal.status] }}</span>
           {% endif %}
-          <span class="small muted">Updated <span class="reltime" data-ts="{{ proposal.updated_at }}"></span></span>
         </div>
         {% if proposal.is_demo %}
         <p class="detail-description">Sample proposal for exploring review and approval without running a worker.</p>
         {% endif %}
+        <div class="detail-meta small muted">Updated <span class="reltime" data-ts="{{ proposal.updated_at }}"></span></div>
       </div>
       <div class="decision-actions">
         <form action="/api/proposals/{{ proposal.id }}/status" method="post">
-          <button class="btn btn-primary" name="status" value="approved">Approve</button>
+          <button class="btn btn-primary" name="status" value="approved"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Approve</button>
         </form>
         <form action="/api/proposals/{{ proposal.id }}/status" method="post">
-          <button class="btn" name="status" value="rejected">Request changes</button>
+          <button class="btn" name="status" value="rejected"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6.5a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H10l-4.5 3v-4.2A3 3 0 0 1 5 13.5v-7Z" stroke="currentColor" stroke-width="1.7"/></svg>Request changes</button>
         </form>
       </div>
     </div>
@@ -63,11 +63,11 @@
       </section>
 
       <section class="card detail-card">
-        <h2>Activity</h2>
+        <h2>Activity timeline</h2>
         <div class="timeline">
-          {% for e in events %}
-          <div class="timeline-item">
-            <div class="small">{{ e.event_type|replace('_', ' ')|title }}</div>
+          {% for e in events|reverse %}
+          <div class="timeline-item {% if 'created' in e.event_type %}is-created{% elif e.event_type == 'comment_added' %}is-note{% elif 'approval' in e.event_type %}is-decision{% endif %}">
+            <div class="small">{{ EVENT_LABELS.get(e.event_type, e.event_type|replace('_', ' ')|title) }}</div>
             <div class="tiny muted reltime" data-ts="{{ e.created_at }}"></div>
           </div>
           {% endfor %}
@@ -78,37 +78,36 @@
 
     <aside>
       {% if proposal.is_demo %}
-      <section class="card side-panel">
-        <span class="badge badge-demo">DEMO</span>
-        <h3 style="margin-top:12px">Demo walkthrough</h3>
+      <section class="card side-panel demo-panel">
+        <div class="side-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 3.5h6v5l4.2 7.2a3 3 0 0 1-2.6 4.5H7.4a3 3 0 0 1-2.6-4.5L9 8.5v-5Z" stroke="currentColor" stroke-width="1.7"/><path d="M8 13h8" stroke="currentColor" stroke-width="1.7"/></svg><h3>Demo walkthrough</h3></div>
         <p>This is sample data. No worker is executed. Exercise the review controls, then remove the demo when finished.</p>
-        <form action="/proposals/demo/reset" method="post"><button class="btn btn-danger btn-sm">Remove demo</button></form>
+        <form class="side-action" action="/proposals/demo/reset" method="post"><button class="btn btn-danger" style="width:100%">Remove demo</button></form>
       </section>
       {% endif %}
       <section class="card side-panel">
-        <h3>Execution</h3>
+        <div class="side-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 5h17v11h-17V5Zm5 15h7M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><h3>Execution</h3></div>
         {% if proposal.is_demo %}
         <p>No live worker is involved. Demo proposals let you practice review and decisions without execution.</p>
-        <a class="link small" href="/proposals/settings#worker">Set up worker for real proposals</a>
+        <a class="btn side-action" href="/proposals/settings#worker">Set up worker</a>
         {% elif proposal.status == "waiting" %}
         <p>This proposal is saved and waiting. Live execution requires a configured Hermes or CLI worker to consume its trigger file.</p>
-        <a class="link small" href="/proposals/settings#worker">Set up worker</a>
+        <a class="btn side-action" href="/proposals/settings#worker">Set up worker</a>
         {% elif proposal.status == "processing" %}
         <p>Work is marked in progress. Updates and review notes appear here as they are recorded.</p>
         {% elif proposal.has_pending_decision %}
         <p>This proposal is ready for your decision. Approve it or request changes above.</p>
         {% else %}
         <p>The proposal record and its review history remain available locally.</p>
-        {% endif %}
+      {% endif %}
       </section>
       <section class="card side-panel">
-        <h3>Details</h3>
+        <div class="side-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.5h8l3 3v14H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7"/><path d="M14.5 3.5v4h4M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><h3>Details</h3></div>
         <div class="facts">
-          <div class="fact"><label>Project</label><p>{% if proposal.project %}<a class="link" href="/proposals/projects/{{ proposal.project.id }}">{{ proposal.project.name }}</a>{% else %}No project{% endif %}</p></div>
-          <div class="fact"><label>Workflow</label><p>{{ workflow_runs[0].template_name if workflow_runs else "Not started" }}</p></div>
-          <div class="fact"><label>Risk level</label><p>{{ proposal.risk_level|title }}</p></div>
-          <div class="fact"><label>Assigned to</label><p>{{ proposal.agent.name if proposal.agent else "Unassigned" }}</p></div>
-          <div class="fact"><label>Cost</label><p>{{ money(proposal.cost_total) }}</p></div>
+          <div class="fact"><label><svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5h6l2 2h8v10H4v-12Z" stroke="currentColor" stroke-width="1.7"/></svg>Project</label><p>{% if proposal.project %}<a class="link" href="/proposals/projects/{{ proposal.project.id }}">{{ proposal.project.name }}</a>{% else %}No project{% endif %}</p></div>
+          <div class="fact"><label><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="5" cy="18" r="2.5" stroke="currentColor" stroke-width="1.7"/><circle cx="19" cy="18" r="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5v4m0 0H5v4m7-4h7v4" stroke="currentColor" stroke-width="1.7"/></svg>Workflow</label><p>{{ workflow_runs[0].template_name if workflow_runs else "Not started" }}</p></div>
+          <div class="fact"><label><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 20 7v5c0 4.8-3.1 7.5-8 9-4.9-1.5-8-4.2-8-9V7l8-3.5Z" stroke="currentColor" stroke-width="1.7"/></svg>Risk</label><p class="risk-value">{{ proposal.risk_level|title }}</p></div>
+          <div class="fact"><label><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M5 20c1.2-4 3.5-6 7-6s5.8 2 7 6" stroke="currentColor" stroke-width="1.7"/></svg>Assigned to</label><p>{{ proposal.agent.name if proposal.agent else "Unassigned" }}</p></div>
+          <div class="fact"><label><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M14.5 8.7c-.7-.5-1.5-.7-2.5-.7-1.5 0-2.5.7-2.5 1.8 0 2.6 5 1.1 5 4 0 1.3-1 2.2-2.5 2.2-1.1 0-2-.3-2.8-.9M12 6.5v11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Estimated cost</label><p>{{ money(proposal.cost_total) }}</p></div>
         </div>
         <details>
           <summary>Advanced metadata</summary>
