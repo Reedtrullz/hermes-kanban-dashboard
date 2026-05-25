@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Projects - Hermes{% endblock %}
+{% block title %}Projects{% endblock %}
 {% block nav_projects %}is-active{% endblock %}
 {% block header %}{% endblock %}
 {% block head %}
@@ -24,7 +24,7 @@
   <div class="page-heading-row">
     <div>
       <h1>Projects</h1>
-      <p>Organize proposals by project and surface the most useful next action.</p>
+      <p>Your projects, what they need next.</p>
     </div>
     <a class="btn btn-primary" href="#new-project">+ New project</a>
   </div>
@@ -69,9 +69,8 @@
   </main>
   <aside>
     <section class="card explain-panel">
-      <h3>Recommended next steps</h3>
-      <p class="small muted">These recommendations are calculated locally from waiting work, decisions, and progress records. No AI model is called automatically.</p>
-      <p class="small muted">Once a worker is configured, each project can submit a planning proposal for deeper AI-assisted recommendations.</p>
+      <h3>How this works</h3>
+      <p class="small muted">Each project card shows what needs attention — uncommitted changes, stale repos, or work in progress. Recommendations come from checking actual git state in ~/Projectos/.</p>
     </section>
     <section class="card" id="new-project">
       <h3>Create a project</h3>

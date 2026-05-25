@@ -1601,6 +1601,7 @@ async def root():
 
 @app.get("/proposals", response_class=HTMLResponse)
 async def proposals_list(request: Request):
+    return RedirectResponse("/proposals/projects", status_code=302)
     executor_filter = request.query_params.get("executor", "")
     status_filter = request.query_params.get("status", "")
     with db_connect() as db:
